@@ -1,5 +1,6 @@
 
-from schedule_parser import extract_schedule
+# from src.schedule_parser import extract_schedule
+from src.schedule_loader import read_or_download_schedule
 from dotenv import dotenv_values
 config = dotenv_values(".env")
 BOT_TOKEN = config["BOT_TOKEN"]
@@ -45,9 +46,9 @@ def main_menu(update: Update, context: CallbackContext) -> int:
     query.answer()
 
     if query.data == "schedule":
-        logger.info("Downloading Schedule")
-        schedule = extract_schedule("https://moscow.quizplease.ru/schedule")
-        logger.info("Downloaded")
+        logger.info("Reading or Downloading Schedule")
+        schedule = read_or_download_schedule("https://moscow.quizplease.ru/schedule", expiration_hours = 24)
+        logger.info("Done!")
         context.user_data['schedule'] = schedule
         context.user_data['page'] = 0
         current_page = context.user_data['page'] + 1
