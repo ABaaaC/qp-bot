@@ -14,6 +14,8 @@ import math
 # Define the number of items per page
 num_items_per_page = 5
 
+updater = Updater(token=BOT_TOKEN, use_context=True)
+
 # Enable logging
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -133,8 +135,8 @@ def main() -> None:
 
     dispatcher.add_handler(conv_handler)
 
-    updater.start_polling()
-    updater.idle()
+    webhook_url = "YOUR_FASTAPI_ENDPOINT_URL"
+    updater.bot.setWebhook(webhook_url)
 
 if __name__ == "__main__":
     main()
