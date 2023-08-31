@@ -1,6 +1,8 @@
 
 from schedule_parser import extract_schedule
-BOT_TOKEN = '6521875912:AAGsFRaaEv3OMtb8apHfyayMFdPv6uT1foQ'
+from dotenv import dotenv_values
+config = dotenv_values(".env")
+BOT_TOKEN = config["BOT_TOKEN"]
 #!/usr/bin/env python
 
 import logging
