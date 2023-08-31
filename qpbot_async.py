@@ -2,6 +2,8 @@ from fastapi import FastAPI, Depends, HTTPException, Request
 from pydantic import BaseModel
 from telegram import Update
 from telegram.ext import Dispatcher, CallbackContext
+import os
+import uvicorn
 
 from dotenv import dotenv_values
 config = dotenv_values(".env")
@@ -57,3 +59,8 @@ async def webhook(token: str, update: Update):
     # Put the incoming update into the update queue
     updater.update_queue.put(update.dict())
     return {"status": "ok"}
+
+if __name__ == "__main__":
+    HOST = os.getenv("HOST", "0.0.0.0")
+    PORT = os.getenv("PORT", 8080)
+    uvicorn.run(app, host=HOST, port=PORT)
