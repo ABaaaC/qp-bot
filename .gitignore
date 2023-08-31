@@ -4,3 +4,4 @@ __*__
 *.ipynb
 .env
 schedules/
+.conda/
