@@ -135,7 +135,7 @@ def main() -> None:
 
     dispatcher.add_handler(conv_handler)
 
-    webhook_url = "YOUR_FASTAPI_ENDPOINT_URL"
+    webhook_url = "https://qp-bot.onrender.com/webhook/6521875912:AAG-a7eTLXEC_6JJupnLpQ3STTuYD-gyhME"
     updater.bot.setWebhook(webhook_url)
 
 if __name__ == "__main__":
