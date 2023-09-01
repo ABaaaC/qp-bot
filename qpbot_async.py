@@ -64,3 +64,6 @@ if __name__ == "__main__":
     HOST = os.getenv("HOST", "0.0.0.0")
     PORT = os.getenv("PORT", 8080)
     uvicorn.run(app, host=HOST, port=PORT)
+
+
+# https://api.telegram.org/bot6521875912:AAG-a7eTLXEC_6JJupnLpQ3STTuYD-gyhME/setWebhook?url=https://qp-bot.onrender.com/webhook/6521875912:AAG-a7eTLXEC_6JJupnLpQ3STTuYD-gyhME
