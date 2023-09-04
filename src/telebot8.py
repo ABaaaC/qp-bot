@@ -15,19 +15,30 @@ import math
 num_items_per_page = 5
 
 # Enable logging
-logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
+# logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
+# logger = logging.getLogger(__name__)
+
+# clrd_fmt = '\x1b[38;5;226m' + '%(levelname)s' + ': %(name)s - (%(asctime)s)' + ' \t\x1b[0m %(message)s'
+# logging.basicConfig(level=logging.INFO, format=clrd_fmt)
+# logger = logging.getLogger(__name__)
+
+fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+clrd_fmt = '\x1b[38;5;226m' + fmt + '\x1b[0m'
+logging.basicConfig(format=clrd_fmt, level=logging.INFO, )
 logger = logging.getLogger(__name__)
 
 # Conversation states
 CITY_CHOICE, MAIN_MENU = range(2)
 
 def start(update: Update, context: CallbackContext) -> int:
+    logger.info("start")
     custom_keyboard = [[KeyboardButton("Moscow")]]
     reply_markup = ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True, one_time_keyboard=True)
     update.message.reply_text("Please choose a city:", reply_markup=reply_markup)
     return CITY_CHOICE
 
 def city_choice(update: Update, context: CallbackContext) -> int:
+    logger.info("city_choice")
     context.user_data['city'] = update.message.text
     update.message.reply_text(f"Great! You chose {context.user_data['city']}.\n"
                               "Now, please choose an option from the main menu:",
@@ -35,6 +46,7 @@ def city_choice(update: Update, context: CallbackContext) -> int:
     return MAIN_MENU
 
 def main_menu_keyboard() -> InlineKeyboardMarkup:
+    logger.info("main_menu_keyboard")
     keyboard = [
         [InlineKeyboardButton("Schedule", callback_data="schedule"),
         InlineKeyboardButton("Something", callback_data="something")]
@@ -42,6 +54,7 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(keyboard)
 
 def main_menu(update: Update, context: CallbackContext) -> int:
+    logger.info("main_menu")
     query = update.callback_query
     query.answer()
 
@@ -66,6 +79,7 @@ def main_menu(update: Update, context: CallbackContext) -> int:
     return MAIN_MENU
 
 def update_schedule_message(message, context, current_page, num_pages):
+    logger.info("update_schedule_message")
     schedule = context.user_data['schedule']
     start_index = (current_page - 1) * num_items_per_page
     end_index = min(start_index + num_items_per_page, len(schedule))
@@ -84,9 +98,8 @@ def update_schedule_message(message, context, current_page, num_pages):
     message_text = f"Here is the schedule for your chosen city (Page {current_page}/{num_pages}):\n{schedule_text}"
     message.edit_text(message_text, reply_markup=InlineKeyboardMarkup([keyboard]))
 
-
-
 def button_callback(update: Update, context: CallbackContext) -> None:
+    logger.info("button_callback")
     query = update.callback_query
     query.answer()
     num_items_per_page = context.user_data.get('num_items_per_page', 5)
@@ -115,7 +128,6 @@ def button_callback(update: Update, context: CallbackContext) -> None:
         "Now, please choose an option from the main menu:",
         reply_markup=main_menu_keyboard())
       
-
 def main() -> None:
     """Start the bot."""
     updater = Updater(token=BOT_TOKEN, use_context=True)

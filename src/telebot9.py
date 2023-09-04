@@ -1,97 +1,160 @@
 
-# from src.schedule_parser import extract_schedule
 from src.schedule_loader import read_or_download_schedule
+
 from dotenv import dotenv_values
 config = dotenv_values(".env")
-BOT_TOKEN = config["BOT_TOKEN"]
+BOT_TOKEN = config.get("BOT_TOKEN")
+BASE_WEBHOOK_URL = config.get("BASE_WEBHOOK_URL")
+WEBHOOK_PATH = config.get("WEBHOOK_PATH")
+
+# bind localhost only to prevent any external access
+WEB_SERVER_HOST = config.get("WEB_SERVER_HOST")
+# Port for incoming request from reverse proxy. Should be any available port
+WEB_SERVER_PORT = config.get("WEB_SERVER_PORT")
 #!/usr/bin/env python
 
-import logging
-from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import Updater, CommandHandler, CallbackContext, MessageHandler, Filters, ConversationHandler, CallbackQueryHandler
 import math
+import logging
+from typing import Any, Dict
+
+from aiogram import Bot, Dispatcher, types, F, Router
+from aiogram.filters import CommandStart
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.enums import ParseMode
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+from aiogram.fsm.context import FSMContext
+from aiogram.types import (
+    Message,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
+
+from aiohttp import web
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
 # Define the number of items per page
 num_items_per_page = 5
 
-updater = Updater(token=BOT_TOKEN, use_context=True)
+
+form_router = Router()
 
 # Enable logging
-logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
+fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+clrd_fmt = '\x1b[38;5;226m' + fmt + '\x1b[0m'
+logging.basicConfig(format=fmt, level=logging.INFO, )
 logger = logging.getLogger(__name__)
 
+
+async def on_startup(bot: Bot) -> None:
+    # If you have a self-signed SSL certificate, then you will need to send a public
+    # certificate to Telegram
+    await bot.set_webhook(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}/{BOT_TOKEN}")
+
+
 # Conversation states
-CITY_CHOICE, MAIN_MENU = range(2)
+class ConversationStates(StatesGroup):
+    CITY_CHOICE = State()
+    MAIN_MENU = State()
+    PAGES = State()
+CITY_CHOICE, MAIN_MENU, PAGES = ConversationStates.CITY_CHOICE, ConversationStates.MAIN_MENU, ConversationStates.PAGES
 
-def start(update: Update, context: CallbackContext) -> int:
-    custom_keyboard = [[KeyboardButton("Moscow")]]
-    reply_markup = ReplyKeyboardMarkup(custom_keyboard, resize_keyboard=True, one_time_keyboard=True)
-    update.message.reply_text("Please choose a city:", reply_markup=reply_markup)
-    return CITY_CHOICE
+# @dp.message(commands=['start'])
+# to add another router
+@form_router.message(CommandStart())
+async def start(message: Message, state: FSMContext) -> None:
+    await state.set_state(ConversationStates.CITY_CHOICE)
 
-def city_choice(update: Update, context: CallbackContext) -> int:
-    context.user_data['city'] = update.message.text
-    update.message.reply_text(f"Great! You chose {context.user_data['city']}.\n"
+    logger.info("Start is really calling")
+    custom_keyboard = [[InlineKeyboardButton(text="Moscow", callback_data="moscow")]]
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=custom_keyboard)
+    await message.answer(text="Please choose a city:", reply_markup=reply_markup)
+
+
+@form_router.callback_query(ConversationStates.CITY_CHOICE)
+async def city_choice(query: types.CallbackQuery, state: FSMContext) -> None:
+    logger.info("city_choice STARTED")
+    await state.set_data({'city': query.data})
+    city = query.data
+
+    await query.message.answer(f"Great! You chose {city}.\n"
                               "Now, please choose an option from the main menu:",
                               reply_markup=main_menu_keyboard())
-    return MAIN_MENU
+    
+    await state.set_state(ConversationStates.MAIN_MENU)
+    logger.info("city_choice DONE")
 
 def main_menu_keyboard() -> InlineKeyboardMarkup:
     keyboard = [
-        [InlineKeyboardButton("Schedule", callback_data="schedule"),
-        InlineKeyboardButton("Something", callback_data="something")]
+        [InlineKeyboardButton(text = "Schedule", callback_data="schedule"),
+        InlineKeyboardButton(text ="Something", callback_data="something")]
     ]
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-def main_menu(update: Update, context: CallbackContext) -> int:
-    query = update.callback_query
-    query.answer()
+@form_router.callback_query(ConversationStates.MAIN_MENU)
+async def main_menu(query: types.CallbackQuery, state: FSMContext) -> None:
+    logger.info("main_menu STARTED")
 
     if query.data == "schedule":
+        await state.set_state(ConversationStates.PAGES)
         logger.info("Reading or Downloading Schedule")
-        schedule = read_or_download_schedule("https://moscow.quizplease.ru/schedule", expiration_hours = 24)
+        schedule = read_or_download_schedule("https://moscow.quizplease.ru/schedule", expiration_hours=24)
+        logger.info(schedule[0])
         logger.info("Done!")
-        context.user_data['schedule'] = schedule
-        context.user_data['page'] = 0
-        current_page = context.user_data['page'] + 1
+        
+        await state.update_data({'schedule': schedule, 'page' : 0})
+        current_page = 1  # Replace context.user_data with query.from_user
         num_pages = math.ceil(len(schedule) / num_items_per_page)
-        update_schedule_message(query.message, context, current_page, num_pages)
+        await state.update_data({'num_items_per_page': num_items_per_page})
+        await update_schedule_message(query.message, state, current_page, num_pages)  # Pass query.from_user to update_schedule_message
 
     elif query.data == "something":
-        query.message.reply_text("You chose 'Something'.")
-    
+        logger.info("something")
+        await query.message.answer("You chose 'Something'.")  
+
+
     elif query.data == "back_to_menu":
-        query.edit_message_text(f"Great! You chose {context.user_data['city']}.\n"
-        "Now, please choose an option from the main menu:",
-        reply_markup=main_menu_keyboard())
+        city = await state.get_data('city')
+        await query.message.edit_text(f"Great! You chose {city}.\n"  # Replace context.user_data with query.from_user
+                                      "Now, please choose an option from the main menu:",
+                                      reply_markup=main_menu_keyboard())
 
-    return MAIN_MENU
+    logger.info("main_menu DONE")
 
-def update_schedule_message(message, context, current_page, num_pages):
-    schedule = context.user_data['schedule']
+
+async def update_schedule_message(message: Message, state: FSMContext, current_page: int, num_pages: int) -> None:
+    logger.info("update_schedule_message STARTED")
+
+    state_data = await state.get_data()
+    schedule = state_data['schedule']
+    num_items_per_page = state_data['num_items_per_page']
+
     start_index = (current_page - 1) * num_items_per_page
     end_index = min(start_index + num_items_per_page, len(schedule))
 
     schedule_text = "\n".join([f"{i + 1 + start_index}. {item['title']} - {item['date']} at {item['time']}" for i, item in enumerate(schedule[start_index:end_index])])
-    keyboard = []
+    builder = InlineKeyboardBuilder()
 
     if start_index > 0:
-        keyboard.append(InlineKeyboardButton("⬅️ Previous", callback_data=f"prev_{current_page - 1}_{num_pages}"))
+        builder.add(InlineKeyboardButton(text = "⬅️ Previous", callback_data=f"prev_{current_page - 1}_{num_pages}"))
 
-    keyboard.append(InlineKeyboardButton("🔙 Back", callback_data="back_to_menu"))
+    builder.add(InlineKeyboardButton(text = "🔙 Back", callback_data="back_to_menu"))
 
     if end_index < len(schedule):
-        keyboard.append(InlineKeyboardButton("➡️ Next", callback_data=f"next_{current_page + 1}_{num_pages}"))
+        builder.add(InlineKeyboardButton(text = "➡️ Next", callback_data=f"next_{current_page + 1}_{num_pages}"))
 
     message_text = f"Here is the schedule for your chosen city (Page {current_page}/{num_pages}):\n{schedule_text}"
-    message.edit_text(message_text, reply_markup=InlineKeyboardMarkup([keyboard]))
+    await message.edit_text(message_text, reply_markup=builder.as_markup())
+
+    logger.info("update_schedule_message DONE")
 
 
+@form_router.callback_query(ConversationStates.PAGES)
+async def button_callback(query: types.CallbackQuery, state: FSMContext):
+    logger.info("button_callback STARTED")
 
-def button_callback(update: Update, context: CallbackContext) -> None:
-    query = update.callback_query
-    query.answer()
-    num_items_per_page = context.user_data.get('num_items_per_page', 5)
+    state_data = await state.get_data()
+    num_items_per_page =  state_data.get('num_items_per_page')  # Replace context.user_data with query.from_user
 
     if query.data.startswith("prev_") or query.data.startswith("next_"):
         action, new_page, num_pages = query.data.split("_")
@@ -99,44 +162,67 @@ def button_callback(update: Update, context: CallbackContext) -> None:
         num_pages = int(num_pages)
 
         if 0 <= new_page <= num_pages:
-            context.user_data['page'] = new_page
+
+            await state.update_data({'page': new_page})
             current_page = new_page
-            update_schedule_message(query.message, context, current_page, num_pages)
+            await update_schedule_message(query.message, state, current_page, num_pages)  # Pass query.from_user to update_schedule_message
 
     elif query.data == "schedule":
         current_page = 1  # Assuming you want to reset to the first page
-        num_pages = math.ceil(len(context.user_data['schedule']) / num_items_per_page)
-        update_schedule_message(query.message, context, current_page, num_pages)
+        num_pages = math.ceil(len(state_data.get('schedule')) / num_items_per_page)  # Replace context.user_data with query.from_user
+        await update_schedule_message(query.message, state, current_page, num_pages)  # Pass query.from_user to update_schedule_message
 
     elif query.data == "something":
-        query.edit_message_text("You chose 'Something'.")
-
+        await query.message.answer("You chose 'Something'.")  # Replace query.edit_message_text with query.message.edit_text
+    
     elif query.data == "back_to_menu":
-
-        query.edit_message_text(f"Great! You chose {context.user_data['city']}.\n"
-        "Now, please choose an option from the main menu:",
-        reply_markup=main_menu_keyboard())
-      
+        await state.set_state(ConversationStates.MAIN_MENU)
+        city = state_data.get('city')
+        await query.message.edit_text(f"Great! You chose {city}.\n"  # Replace context.user_data with query.from_user
+                                      "Now, please choose an option from the main menu:",
+                                      reply_markup=main_menu_keyboard())
+    
+    logger.info("button_callback DONE")
 
 def main() -> None:
     """Start the bot."""
-    updater = Updater(token=BOT_TOKEN, use_context=True)
-    dispatcher = updater.dispatcher
+    dp = Dispatcher()
+    dp.include_router(form_router)
 
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
-            CITY_CHOICE: [MessageHandler(Filters.text & ~Filters.command, city_choice)],
-            MAIN_MENU: [CallbackQueryHandler(main_menu, pattern='^(schedule|something)$'),
-                        CallbackQueryHandler(button_callback)],
-        },
-        fallbacks=[],
+    # Register startup hook to initialize webhook
+    dp.startup.register(on_startup)
+
+    # Initialize Bot instance with a default parse mode which will be passed to all API calls
+    bot = Bot(BOT_TOKEN, parse_mode=ParseMode.HTML)
+
+    # Create aiohttp.web.Application instance
+    app = web.Application()
+
+    # Create an instance of request handler,
+    # aiogram has few implementations for different cases of usage
+    # In this example we use SimpleRequestHandler which is designed to handle simple cases
+    webhook_requests_handler = SimpleRequestHandler(
+        dispatcher=dp,
+        bot=bot,
+        # secret_token=WEBHOOK_SECRET,
     )
+    # Register webhook handler on application
+    webhook_requests_handler.register(app, path=f"{WEBHOOK_PATH}/{BOT_TOKEN}")
 
-    dispatcher.add_handler(conv_handler)
+    # Mount dispatcher startup and shutdown hooks to aiohttp application
+    setup_application(app, dp, bot=bot)
 
-    webhook_url = "https://qp-bot.onrender.com/webhook/6521875912:AAG-a7eTLXEC_6JJupnLpQ3STTuYD-gyhME"
-    updater.bot.setWebhook(webhook_url)
+    # And finally start webserver
+    web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
+
+    # Register webhook handler on application
+    webhook_requests_handler.register(app, path=f"{WEBHOOK_PATH}/{BOT_TOKEN}")
+
+    # Mount dispatcher startup and shutdown hooks to aiohttp application
+    setup_application(app, dp, bot=bot)
+
+    # And finally start webserver
+    web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
 
 if __name__ == "__main__":
     main()

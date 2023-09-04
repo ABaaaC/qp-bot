@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 def is_file_expired(filepath, filename_prefix, expiration_hours):
     """Check if the file is expired based on filename."""
@@ -36,18 +37,18 @@ def read_or_download_schedule(url, expiration_hours=24):
 
     if not os.path.exists(base_filepath):
         os.makedirs(base_filepath)
-        logging.info(f'Created directory: {base_filepath}')
+        logger.info(f'Created directory: {base_filepath}')
 
     if not os.path.exists(filepath):
         os.makedirs(filepath)
-        logging.info(f'Created directory: {filepath}')
+        logger.info(f'Created directory: {filepath}')
 
     files_in_directory = [f for f in os.listdir(filepath) if f.startswith('schedule_data')]
 
 
     files_in_directory = [f for f in os.listdir(filepath) if f.startswith(filename_prefix)]
     if not files_in_directory:
-        logging.info('No files found in the directory. Creating a new file...')
+        logger.info('No files found in the directory. Creating a new file...')
         current_timestamp = get_current_timestamp()
         json_filename = f'{filename_prefix}_{current_timestamp}.json'
         full_path = os.path.join(filepath, json_filename)
@@ -58,13 +59,13 @@ def read_or_download_schedule(url, expiration_hours=24):
         # Save new data to file
         with open(full_path, 'w') as file:
             json.dump(schedule_data, file)
-        logging.info(f'New data downloaded and saved to {full_path}')
+        logger.info(f'New data downloaded and saved to {full_path}')
     else:
         latest_file = max(files_in_directory)
         full_path = os.path.join(filepath, latest_file)
         if is_file_expired(filepath, filename_prefix, expiration_hours):
-            # Logging: File expired, downloading new data...
-            logging.info('File is expired, downloading new data...')
+            # logger: File expired, downloading new data...
+            logger.info('File is expired, downloading new data...')
             
             # Call extract_schedule function to get new data
             schedule_data = extract_schedule(url)
@@ -75,23 +76,23 @@ def read_or_download_schedule(url, expiration_hours=24):
             new_full_path = os.path.join(filepath, new_filename)
             with open(new_full_path, 'w') as file:
                 json.dump(schedule_data, file)
-            logging.info(f'New data downloaded and saved to {new_full_path}')
+            logger.info(f'New data downloaded and saved to {new_full_path}')
             
             # Remove old file
             os.remove(full_path)
-            logging.info(f'Removed old file: {full_path}')
+            logger.info(f'Removed old file: {full_path}')
         else:
-            # Logging: File not expired, reading existing data...
-            logging.info('File is not expired, reading existing data...')
+            # logger: File not expired, reading existing data...
+            logger.info('File is not expired, reading existing data...')
             with open(full_path, 'r') as file:
                 schedule_data = json.load(file)
-            logging.info(f'Existing data read from {full_path}')
+            logger.info(f'Existing data read from {full_path}')
             
             # Remove other files
             for file in files_in_directory:
                 if file != latest_file:
                     os.remove(os.path.join(filepath, file))
-                    logging.info(f'Removed old file: {file}')
+                    logger.info(f'Removed old file: {file}')
 
     return schedule_data
 
