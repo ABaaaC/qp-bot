@@ -19,7 +19,7 @@ from aiogram.enums import ParseMode
 import aiohttp
 from aiohttp import web
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
-from telebot10_guni_aio import bot, dp
+from src.telebot10_guni_aio import bot, dp
 # Define the number of items per page
 
 form_router = Router()
