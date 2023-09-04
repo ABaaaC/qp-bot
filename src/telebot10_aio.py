@@ -123,7 +123,7 @@ async def update_schedule_message(message: Message, state: FSMContext, current_p
     start_index = (current_page - 1) * num_items_per_page
     end_index = min(start_index + num_items_per_page, len(schedule))
 
-    schedule_text = "\n".join([f"{i + 1 + start_index}. {item['title']} - {item['date']} at {item['time']}" for i, item in enumerate(schedule[start_index:end_index])])
+    schedule_text = "\n".join([f"{i + 1 + start_index}. {item['title']} - {item['date']} at {item['time']} in {item['place']}" for i, item in enumerate(schedule[start_index:end_index])])
     builder = InlineKeyboardBuilder()
 
     if start_index > 0:

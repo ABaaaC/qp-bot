@@ -184,36 +184,35 @@ async def button_callback(query: types.CallbackQuery, state: FSMContext):
     
     logger.info("button_callback DONE")
 
-def main() -> None:
-    """Start the bot."""
-    dp = Dispatcher()
-    dp.include_router(form_router)
+"""Start the bot."""
+dp = Dispatcher()
+dp.include_router(form_router)
 
-    # Register startup hook to initialize webhook
-    dp.startup.register(on_startup)
+# Register startup hook to initialize webhook
+dp.startup.register(on_startup)
 
-    # Initialize Bot instance with a default parse mode which will be passed to all API calls
-    bot = Bot(BOT_TOKEN, parse_mode=ParseMode.HTML)
+# Initialize Bot instance with a default parse mode which will be passed to all API calls
+bot = Bot(BOT_TOKEN, parse_mode=ParseMode.HTML)
 
-    # Create aiohttp.web.Application instance
-    app = web.Application()
+# Create aiohttp.web.Application instance
+app = web.Application()
 
-    # Create an instance of request handler,
-    # aiogram has few implementations for different cases of usage
-    # In this example we use SimpleRequestHandler which is designed to handle simple cases
-    webhook_requests_handler = SimpleRequestHandler(
-        dispatcher=dp,
-        bot=bot,
-        # secret_token=WEBHOOK_SECRET,
-    )
-    # Register webhook handler on application
-    webhook_requests_handler.register(app, path=f"{WEBHOOK_PATH}/{BOT_TOKEN}")
+# Create an instance of request handler,
+# aiogram has few implementations for different cases of usage
+# In this example we use SimpleRequestHandler which is designed to handle simple cases
+webhook_requests_handler = SimpleRequestHandler(
+    dispatcher=dp,
+    bot=bot,
+    # secret_token=WEBHOOK_SECRET,
+)
+# Register webhook handler on application
+webhook_requests_handler.register(app, path=f"{WEBHOOK_PATH}/{BOT_TOKEN}")
 
-    # Mount dispatcher startup and shutdown hooks to aiohttp application
-    setup_application(app, dp, bot=bot)
+# Mount dispatcher startup and shutdown hooks to aiohttp application
+setup_application(app, dp, bot=bot)
 
+    
+if __name__ == "__main__":
     # And finally start webserver
     web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
 
-if __name__ == "__main__":
-    main()

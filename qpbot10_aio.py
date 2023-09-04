@@ -61,7 +61,6 @@ app.add_routes([web.get('/', hello)])
     
 if __name__ == "__main__":
     # And finally start webserver
-    # web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
-    pass
+    web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
+    # pass
 
-    # in CLI: gunicorn qpbot10:app -b 127.0.0.1:8080 -k aiohttp.GunicornWebWorker
