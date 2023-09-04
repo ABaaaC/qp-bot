@@ -215,14 +215,5 @@ def main() -> None:
     # And finally start webserver
     web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
 
-    # Register webhook handler on application
-    webhook_requests_handler.register(app, path=f"{WEBHOOK_PATH}/{BOT_TOKEN}")
-
-    # Mount dispatcher startup and shutdown hooks to aiohttp application
-    setup_application(app, dp, bot=bot)
-
-    # And finally start webserver
-    web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
-
 if __name__ == "__main__":
     main()
