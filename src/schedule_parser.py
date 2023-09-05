@@ -1,6 +1,26 @@
 import requests
 from bs4 import BeautifulSoup
 
+from enum import Enum
+
+class GameType(Enum):
+    classic = 0
+    kim = 1
+    online = 2
+    special = 3
+    newbie = 4
+
+def classify_title(title: str) -> GameType:
+    if  title.find("[стрим]") != -1:
+        return GameType.online
+    if  title.find("[новички]") != -1:
+        return GameType.newbie
+    if title.find("Классика") != -1 or title.find("финал]") != -1:
+        return GameType.classic
+    if title.lower().find("кино и музыка") != -1:
+        return GameType.kim
+    return GameType.special
+
 def extract_schedule(url):
     response = requests.get(url)
     
@@ -38,6 +58,7 @@ def extract_schedule(url):
                 'time': time_element.get_text(strip=True).split()[-1] if time_element else None,
                 'address': address_element.contents[0].strip() if address_element else None,
             }
+            game_info['type'] = classify_title(game_info['title'])
             schedule.append(game_info)
         
         return schedule

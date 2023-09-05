@@ -1,5 +1,4 @@
-from src.schedule_parser import extract_schedule
-# from schedule_parser import extract_schedule # for testing
+# from src.schedule_parser import extract_schedule
 
 import os
 import json
@@ -58,7 +57,7 @@ def read_or_download_schedule(url, expiration_hours=24):
         
         # Save new data to file
         with open(full_path, 'w') as file:
-            json.dump(schedule_data, file)
+            json.dump(schedule_data, file, default=lambda x: x.name if isinstance(x, GameType) else x)
         logger.info(f'New data downloaded and saved to {full_path}')
     else:
         latest_file = max(files_in_directory)
@@ -75,7 +74,7 @@ def read_or_download_schedule(url, expiration_hours=24):
             new_filename = f'{filename_prefix}_{new_timestamp}.json'
             new_full_path = os.path.join(filepath, new_filename)
             with open(new_full_path, 'w') as file:
-                json.dump(schedule_data, file)
+                json.dump(schedule_data, file, default=lambda x: x.name if isinstance(x, GameType) else x)
             logger.info(f'New data downloaded and saved to {new_full_path}')
             
             # Remove old file
@@ -99,3 +98,21 @@ def read_or_download_schedule(url, expiration_hours=24):
 # url = "https://moscow.quizplease.ru/schedule"
 # schedule = read_or_download_schedule(url)
 # print(schedule[0])
+
+    
+if __name__ != "__main__":
+    from src.schedule_parser import extract_schedule, GameType
+else:
+    from schedule_parser import extract_schedule, GameType # for testing
+    schedule = read_or_download_schedule("https://moscow.quizplease.ru/schedule", expiration_hours=24)
+    game = schedule[0]
+    print(game)
+    print(GameType[game['type']])
+
+    for game in schedule:
+        for key, _ in game.items():
+            if key == 'type':
+                game[key] = GameType[game[key]]
+
+    print(*schedule[:2], sep='\n\n')
+
