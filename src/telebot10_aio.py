@@ -97,7 +97,8 @@ async def load_schedule(state: FSMContext):
         for game in schedule:
             for key, _ in game.items():
                 if key == 'type':
-                    game[key] = GameType[game[key]]
+                    # game[key] = GameType[game[key]]
+                    game.update({'type': GameType[game[key]]})
     
         await state.update_data({'schedule': schedule})
     

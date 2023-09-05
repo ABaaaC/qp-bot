@@ -105,27 +105,16 @@ if __name__ != "__main__":
 else:
     from schedule_parser import extract_schedule, GameType # for testing
     schedule = read_or_download_schedule("https://moscow.quizplease.ru/schedule", expiration_hours=24)
-    game = schedule[0]
+    game = schedule[-1]
     print(game)
     print(GameType[game['type']])
 
     for game in schedule:
         for key, _ in game.items():
             if key == 'type':
-                game[key] = GameType[game[key]]
-
-    print(*schedule[:2], sep='\n\n')
-
-    ban = [GameType.classic, GameType.kim]
-    print("ALL:\t", len(schedule))
-    filtered = []
-    for game in schedule:
-        if game['type'] in ban:
-            filtered.append(game)
-
-    print(len(filtered))
-
-    filtered2 = list(filter(lambda game: game.get('type') not in ban, schedule))
-    print(len(filtered2))
-
+                # game[key] = GameType[game[key]]
+                game.update({'type':GameType[game[key]]})
+    print(game)
+    game.update({'type':GameType.newbie})
+    print(game)
     
