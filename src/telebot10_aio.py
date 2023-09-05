@@ -52,12 +52,7 @@ class ConversationStates(StatesGroup):
 
 
 # By Default we choose all filters
-DEFAULT_FILTER = { 
-    'option1': True,
-    'option2': True,
-    'option3': True,
-    'option4': True,
-}
+DEFAULT_FILTER = dict([(i, True) for i in GameType])
 
 CHOOSE_EMOJI = ['❌', '✅']
 
@@ -77,9 +72,9 @@ async def city_choice(query: types.CallbackQuery, state: FSMContext) -> None:
     await state.set_data({'city': query.data, 'filter_game_flags': DEFAULT_FILTER})
     city = query.data
 
-    await query.message.answer(f"Great! You chose {city}.\n"
-                              "Now, please choose an option from the main menu:",
-                              reply_markup=main_menu_keyboard())
+    await query.message.edit_text(f"Great! You chose {city}.\n"
+                            "Now, please choose an option from the main menu:",
+                            reply_markup=main_menu_keyboard())
     
     await state.set_state(ConversationStates.MAIN_MENU)
     logger.info("city_choice DONE")
@@ -120,8 +115,8 @@ async def main_menu(query: types.CallbackQuery, state: FSMContext) -> None:
         logger.info("Reading or Downloading Schedule")
         schedule = await load_schedule(state)
         await state.update_data({'page' : 0})
-        current_page = 1  # Replace context.user_data with query.from_user
         num_pages = math.ceil(len(schedule) / num_items_per_page)
+        current_page = min(1, num_pages)  # Replace context.user_data with query.from_user
         await state.update_data({'num_items_per_page': num_items_per_page})
         await update_schedule_message(query.message, state, current_page, num_pages)  # Pass query.from_user to update_schedule_message
 
@@ -145,13 +140,21 @@ async def main_menu(query: types.CallbackQuery, state: FSMContext) -> None:
 
 def get_filter_button_builder(filter_game_flags):
     builder = InlineKeyboardBuilder()
-    builder.add(
-        *[InlineKeyboardButton(text = f"Option {i+1} {CHOOSE_EMOJI[filter_game_flags[f'option{i+1}']]}", \
-                               callback_data=f'option_{i+1}') for i in range(4)]
-    )
+    # builder.add(
+    #     # *[InlineKeyboardButton(text = f"Option {i+1} {CHOOSE_EMOJI[filter_game_flags[f'option{i+1}']]}", \
+    #     #                        callback_data=f'option_{i+1}') for i in range(4)]
+    #     *[InlineKeyboardButton(text = val.name + f" {CHOOSE_EMOJI[filter_game_flags.get(val)]}", \
+    #                     callback_data=val.name) for val in GameType]
+    # )
+    for val in GameType:
+        builder.add(
+            InlineKeyboardButton(text = val.name + f" {CHOOSE_EMOJI[filter_game_flags.get(val)]}", \
+                        callback_data=val.name)
+        )
     builder.add(InlineKeyboardButton(text = "Save", callback_data='save'))
     
-    builder.adjust(4,1)
+    builder.adjust( *( [1] * (len(GameType) + 1) ) )
+    # builder.adjust(*list(range(len(GameType))),1)
 
     return builder
 
@@ -159,7 +162,7 @@ async def filter_game(message: Message, state: FSMContext):
     state_data = await state.get_data()
     filter_game_flags = state_data.get('filter_game_flags')
     builder = get_filter_button_builder(filter_game_flags)
-    await message.answer(text = 'Choose interesting games:', reply_markup=builder.as_markup())
+    await message.edit_text(text = 'Choose interesting games:', reply_markup=builder.as_markup())
 
 @form_router.callback_query(ConversationStates.FILTER)
 async def process_filters(query: types.CallbackQuery, state: FSMContext):
@@ -168,16 +171,25 @@ async def process_filters(query: types.CallbackQuery, state: FSMContext):
 
     if query.data == 'save':
         city = state_data.get('city')
-        await query.message.answer(f"Great! You chose {city}.\n"
+        schedule = state_data.get('schedule')
+        filter_game_flags = state_data.get('filter_game_flags')
+
+        
+        filered_schedule = list(filter(lambda game: filter_game_flags.get(game.get('type')), schedule))
+        await state.update_data({'filtered_schedule': filered_schedule})
+
+        await query.message.edit_text(f"Great! You chose {city}.\n"
                               "Now, please choose an option from the main menu:",
                               reply_markup=main_menu_keyboard())
     
         await state.set_state(ConversationStates.MAIN_MENU)
 
-    elif query.data.startswith('option'):
-        opt, ind = query.data.split('_')
+    elif query.data in GameType.__members__:
+        # opt, ind = query.data.split('_')
+        name = query.data
+        game_type = getattr(GameType, name)
         filter_game_flags = state_data.get('filter_game_flags')
-        filter_game_flags[opt+ind] = not filter_game_flags[opt+ind]
+        filter_game_flags[game_type] = not filter_game_flags[game_type]
         await state.update_data({'filter_game_flags' : filter_game_flags})
         builder = get_filter_button_builder(filter_game_flags)
         await query.message.edit_reply_markup(reply_markup=builder.as_markup())
@@ -193,8 +205,8 @@ async def update_schedule_message(message: Message, state: FSMContext, current_p
     logger.info("update_schedule_message STARTED")
 
     state_data = await state.get_data()
-    schedule = state_data['filtered_schedule']
-    num_items_per_page = state_data['num_items_per_page']
+    schedule = state_data.get('filtered_schedule')
+    num_items_per_page = state_data.get('num_items_per_page')
 
     start_index = (current_page - 1) * num_items_per_page
     end_index = min(start_index + num_items_per_page, len(schedule))
@@ -240,7 +252,9 @@ async def button_callback(query: types.CallbackQuery, state: FSMContext):
         await update_schedule_message(query.message, state, current_page, num_pages)  # Pass query.from_user to update_schedule_message
 
     elif query.data == "something":
-        await query.message.answer("You chose 'Something'.")  # Replace query.edit_message_text with query.message.edit_text
+        await query.message.answer("You chose 'Something'.") 
+        # await query.message.edit_text(text="")
+        # # Replace query.edit_message_text with query.message.edit_text
     
     elif query.data == "back_to_menu":
         await state.set_state(ConversationStates.MAIN_MENU)

@@ -116,3 +116,16 @@ else:
 
     print(*schedule[:2], sep='\n\n')
 
+    ban = [GameType.classic, GameType.kim]
+    print("ALL:\t", len(schedule))
+    filtered = []
+    for game in schedule:
+        if game['type'] in ban:
+            filtered.append(game)
+
+    print(len(filtered))
+
+    filtered2 = list(filter(lambda game: game.get('type') not in ban, schedule))
+    print(len(filtered2))
+
+    
