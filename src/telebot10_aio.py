@@ -186,7 +186,9 @@ async def process_filters(query: types.CallbackQuery, state: FSMContext):
 def get_schedule_text(schedule, start_index, end_index):
     game_titles = []
     for i, game in enumerate(schedule[start_index:end_index]):
-        package_number_str = f" #{game['package_number']}"
+        package_number_str = ''
+        if game['package_number'] is not None:
+            package_number_str = f" #{game['package_number']}"
         game_name = f"{i + 1 + start_index}. {game['title']}" + package_number_str
 
         if game['type'] == GameType.online:
