@@ -71,7 +71,7 @@ async def city_choice(query: types.CallbackQuery, state: FSMContext) -> None:
     logger.info("city_choice STARTED")
     await state.set_data({'city': query.data, 'filter_game_flags': DEFAULT_FILTER})
     city = query.data
-
+    await state.update_data({'url': f'https://{city}.quizplease.ru'})
     await query.message.edit_text(f"Great! You chose {city}.\n"
                             "Now, please choose an option from the main menu:",
                             reply_markup=main_menu_keyboard())
@@ -82,7 +82,7 @@ async def city_choice(query: types.CallbackQuery, state: FSMContext) -> None:
 def main_menu_keyboard() -> InlineKeyboardMarkup:
     keyboard = [
         [InlineKeyboardButton(text = "Schedule", callback_data="schedule"),
-        InlineKeyboardButton(text = "Something", callback_data="something"),
+        # InlineKeyboardButton(text = "Something", callback_data="something"),
         InlineKeyboardButton(text = "Filter", callback_data='filter_game')]
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -90,16 +90,10 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
 async def load_schedule(state: FSMContext):
     state_data = await state.get_data()
     if 'schedule' not in state_data.keys() or state_data['schedule'] is None:
-        schedule = read_or_download_schedule("https://moscow.quizplease.ru/schedule", expiration_hours=24)
+        schedule = read_or_download_schedule(state_data.get('url') + "/schedule", expiration_hours=24)
         logger.info(schedule[0])
         logger.info("Done!")
 
-        for game in schedule:
-            for key, _ in game.items():
-                if key == 'type':
-                    # game[key] = GameType[game[key]]
-                    game.update({'type': GameType[game[key]]})
-    
         await state.update_data({'schedule': schedule})
     
     if 'filtered_schedule' not in state_data.keys() or state_data['filtered_schedule'] is None:
@@ -121,9 +115,9 @@ async def main_menu(query: types.CallbackQuery, state: FSMContext) -> None:
         await state.update_data({'num_items_per_page': num_items_per_page})
         await update_schedule_message(query.message, state, current_page, num_pages)  # Pass query.from_user to update_schedule_message
 
-    elif query.data == "something":
-        logger.info("something")
-        await query.message.answer("You chose 'Something'.")  
+    # elif query.data == "something":
+    #     logger.info("something")
+    #     await query.message.answer("You chose 'Something'.")  
 
 
     elif query.data == "back_to_menu":
@@ -141,12 +135,7 @@ async def main_menu(query: types.CallbackQuery, state: FSMContext) -> None:
 
 def get_filter_button_builder(filter_game_flags):
     builder = InlineKeyboardBuilder()
-    # builder.add(
-    #     # *[InlineKeyboardButton(text = f"Option {i+1} {CHOOSE_EMOJI[filter_game_flags[f'option{i+1}']]}", \
-    #     #                        callback_data=f'option_{i+1}') for i in range(4)]
-    #     *[InlineKeyboardButton(text = val.name + f" {CHOOSE_EMOJI[filter_game_flags.get(val)]}", \
-    #                     callback_data=val.name) for val in GameType]
-    # )
+
     for val in GameType:
         builder.add(
             InlineKeyboardButton(text = val.name + f" {CHOOSE_EMOJI[filter_game_flags.get(val)]}", \
@@ -155,7 +144,6 @@ def get_filter_button_builder(filter_game_flags):
     builder.add(InlineKeyboardButton(text = "Save", callback_data='save'))
     
     builder.adjust( *( [1] * (len(GameType) + 1) ) )
-    # builder.adjust(*list(range(len(GameType))),1)
 
     return builder
 
@@ -196,9 +184,21 @@ async def process_filters(query: types.CallbackQuery, state: FSMContext):
         await query.message.edit_reply_markup(reply_markup=builder.as_markup())
 
 def get_schedule_text(schedule, start_index, end_index):
-    game_titles = [f"{i + 1 + start_index}. {item['title']} #{item['package_number']}" + ' - ' + \
-                   f"{item['date']} at {item['time']} in {item['place']} ({item['price']})" \
-                   for i, item in enumerate(schedule[start_index:end_index])]
+    game_titles = []
+    for i, game in enumerate(schedule[start_index:end_index]):
+
+        game_name = f"{i + 1 + start_index}. {game['title']} #{game['package_number']}"
+
+        if game['type'] == GameType.online:
+            game_loc = f"{game['date']}, {game['time']}, ({game['price']})"
+        else:
+            game_loc = f"{game['date']} at {game['time']} in {game['place']}, ({game['price']})"
+
+        game_titles.append(game_name + ' - ' + game_loc)
+                   
+    # game_titles = [f"{i + 1 + start_index}. {game['title']} #{game['package_number']}" + ' - ' + \
+    #                f"{game['date']} at {game['time']} in {game['place']} ({game['price']})" \
+    #                for i, game in enumerate(schedule[start_index:end_index])]
     schedule_text = "\n".join(game_titles)
     return schedule_text
 
@@ -208,6 +208,7 @@ async def update_schedule_message(message: Message, state: FSMContext, current_p
     state_data = await state.get_data()
     schedule = state_data.get('filtered_schedule')
     num_items_per_page = state_data.get('num_items_per_page')
+    url = state_data.get('url')
 
     start_index = (current_page - 1) * num_items_per_page
     end_index = min(start_index + num_items_per_page, len(schedule))
@@ -215,15 +216,29 @@ async def update_schedule_message(message: Message, state: FSMContext, current_p
     schedule_text = get_schedule_text(schedule, start_index, end_index)
     builder = InlineKeyboardBuilder()
 
-    if start_index > 0:
-        builder.add(InlineKeyboardButton(text = "⬅️ Previous", callback_data=f"prev_{current_page - 1}_{num_pages}"))
+    builder.add(
+        *[
+            InlineKeyboardButton(text=f"{i+1+start_index}", url=url+item.get('url_suf')) \
+                for i, item in enumerate(schedule[start_index:end_index])
+        ]
+    )
+
+    text_callback = f"prev_{current_page - 1}_{num_pages}"
+    if start_index == 0:
+        text_callback = 'pass'
+    builder.add(InlineKeyboardButton(text = "⬅️", callback_data=text_callback))
+
+    text_callback = f"next_{current_page + 1}_{num_pages}"
+    if start_index == len(schedule):
+        text_callback = 'pass'
+    builder.add(InlineKeyboardButton(text = "➡️", callback_data=text_callback))
 
     builder.add(InlineKeyboardButton(text = "🔙 Back", callback_data="back_to_menu"))
 
-    if end_index < len(schedule):
-        builder.add(InlineKeyboardButton(text = "➡️ Next", callback_data=f"next_{current_page + 1}_{num_pages}"))
-
     message_text = f"Here is the schedule for your chosen city (Page {current_page}/{num_pages}):\n{schedule_text}"
+    
+    builder.adjust(end_index-start_index, 2, 1)
+    
     await message.edit_text(message_text, reply_markup=builder.as_markup())
 
     logger.info("update_schedule_message DONE")

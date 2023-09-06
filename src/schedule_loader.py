@@ -92,6 +92,12 @@ def read_or_download_schedule(url, expiration_hours=24):
                 if file != latest_file:
                     os.remove(os.path.join(filepath, file))
                     logger.info(f'Removed old file: {file}')
+        
+        for game in schedule_data:
+            for key, _ in game.items():
+                if key == 'type':
+                    # game[key] = GameType[game[key]]
+                    game.update({'type':GameType[game[key]]})
 
     return schedule_data
 
@@ -114,7 +120,7 @@ else:
             if key == 'type':
                 # game[key] = GameType[game[key]]
                 game.update({'type':GameType[game[key]]})
-    print(game)
+    print(schedule[-1])
     game.update({'type':GameType.newbie})
-    print(game)
+    print(schedule[-1])
     

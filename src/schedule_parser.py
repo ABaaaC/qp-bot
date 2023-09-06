@@ -32,6 +32,7 @@ def extract_schedule(url):
         
         schedule = []
         for element in schedule_elements:
+
             date_element = element.find('div', class_='block-date-with-language-game')
             title_element, package_number_element = element.find_all('div', class_='h2-game-card')
             description_element = element.find('div', class_='techtext')
@@ -41,6 +42,8 @@ def extract_schedule(url):
             info_element = element.find_all('div', class_='schedule-info')
             time_element = info_element[2]
             address_element = info_element[1].find('div', class_='techtext-halfwhite')
+
+            url_element = element.find('div', class_='game-buttons')
 
             # Extract the game package number from the title
             title_text = title_element.get_text(strip=True) if title_element else None
@@ -54,11 +57,14 @@ def extract_schedule(url):
                 'description': description_element.get_text(strip=True) if description_element else None,
                 'place': place_element.contents[0].strip() if place_element else None,
                 'package_number': package_number,
-                'price': price_element.get_text(strip=True)[:4] if price_element else None,
+                'price': price_element.get_text(strip=True).split('₽')[0] + '₽' if price_element else None,
                 'time': time_element.get_text(strip=True).split()[-1] if time_element else None,
                 'address': address_element.contents[0].strip() if address_element else None,
+                'url_suf': url_element.find_all('a')[-1]['href']
             }
             game_info['type'] = classify_title(game_info['title'])
+            if game_info['title'].lower().find("кино и музыка"):
+                game_info['title'] = "КиМ"
             schedule.append(game_info)
         
         return schedule
@@ -72,6 +78,7 @@ if __name__ == "__main__":
     
     if extracted_schedule:
         for game in extracted_schedule:
-            print(f"Date: {game['date']}, Title: {game['title']}, Time: {game['time']}, Place: {game['place']}")
+            print(game['url_suf'])
+            # print(f"Date: {game['date']}, Title: {game['title']}, Time: {game['time']}, Place: {game['place']}")
     else:
         print("No schedule information extracted.")
