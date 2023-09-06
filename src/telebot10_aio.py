@@ -58,6 +58,7 @@ CHOOSE_EMOJI = ['❌', '✅']
 
 @form_router.message(CommandStart())
 async def start(message: Message, state: FSMContext) -> None:
+    await state.clear()
     await state.set_state(ConversationStates.CITY_CHOICE)
 
     logger.info("Start is really calling")
