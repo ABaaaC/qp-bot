@@ -63,9 +63,11 @@ def extract_schedule(url):
                 'url_suf': url_element.find_all('a')[-1]['href']
             }
             game_info['type'] = classify_title(game_info['title'])
-            if game_info['title'].lower().find("кино и музыка"):
+            if game_info['type'] == GameType.kim:
                 game_info['title'] = "КиМ"
             schedule.append(game_info)
+            print(game_info)
+            break
         
         return schedule
     else:
