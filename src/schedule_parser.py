@@ -67,7 +67,6 @@ def extract_schedule(url):
                 game_info['title'] = "КиМ"
             schedule.append(game_info)
             print(game_info)
-            break
         
         return schedule
     else:
