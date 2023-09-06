@@ -50,7 +50,9 @@ def extract_schedule(url):
             package_number_text = package_number_element.get_text(strip=True) if title_element else None
             if package_number_text and '#' in package_number_text:
                 package_number = package_number_text.split('#')[-1].strip()
-
+            else:
+                package_number = None
+                
             game_info = {
                 'date': date_element.get_text(strip=True) if date_element else None,
                 'title': title_text if title_text != 'Квиз, плиз!' else 'Классика',
@@ -66,7 +68,8 @@ def extract_schedule(url):
             if game_info['type'] == GameType.kim:
                 game_info['title'] = "КиМ"
             schedule.append(game_info)
-            print(game_info)
+            if package_number is None:
+                print(game_info)
         
         return schedule
     else:

@@ -111,16 +111,6 @@ if __name__ != "__main__":
 else:
     from schedule_parser import extract_schedule, GameType # for testing
     schedule = read_or_download_schedule("https://moscow.quizplease.ru/schedule", expiration_hours=24)
-    game = schedule[-1]
-    print(game)
-    print(GameType[game['type']])
-
     for game in schedule:
-        for key, _ in game.items():
-            if key == 'type':
-                # game[key] = GameType[game[key]]
-                game.update({'type':GameType[game[key]]})
-    print(schedule[-1])
-    game.update({'type':GameType.newbie})
-    print(schedule[-1])
+        print(game['title'])
     
