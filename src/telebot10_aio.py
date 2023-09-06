@@ -194,7 +194,7 @@ def get_schedule_text(schedule, start_index, end_index):
         if game['type'] == GameType.online:
             game_loc = f"{game['date']}, {game['time']}, ({game['price']})"
         else:
-            game_loc = f"{game['date']} at {game['time']} in {game['place']}, ({game['price']})"
+            game_loc = f"{game['date']} at {game['time']} in {game['place']} ({game['price']})"
 
         game_titles.append(game_name + ' - ' + game_loc)
                    

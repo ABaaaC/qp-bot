@@ -17,7 +17,7 @@ def classify_title(title: str) -> GameType:
         return GameType.newbie
     if title.find("Классика") != -1 or title.find("финал]") != -1:
         return GameType.classic
-    if title.lower().find("кино и музыка") != -1:
+    if title.lower().find("кино и музыка") != -1 or title.find("кино]") != -1 or title.find("[music") != -1:
         return GameType.kim
     return GameType.special
 
