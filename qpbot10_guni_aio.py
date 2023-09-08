@@ -12,12 +12,16 @@ WEB_SERVER_PORT = config.get("WEB_SERVER_PORT")
 #!/usr/bin/env python
 
 import logging
+import os
 
 from aiogram import Bot
 
 from aiohttp import web
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
-from src.telebot10_aio import bot, dp
+from src.telebot10_aio import bot, dp, QP_URL
+
+from src.schedule_loader import download_schedule
+
 # Define the number of items per page
 
 # Enable logging
@@ -35,6 +39,23 @@ async def on_startup(bot: Bot) -> None:
 
 async def hello(request):
     return web.Response(text="Hello, world")
+
+async def refresh_schedule(request):
+    filename_prefix = 'schedule_data'
+    base_filepath = 'schedules'
+    cities = os.listdir(base_filepath)
+    base_url = QP_URL
+    resp = "\n".join(cities)
+
+    for city in cities:
+        url = 'https://' + city + '.' + base_url + "/schedule"
+    
+        filepath = os.path.join(base_filepath, city)
+        _ = download_schedule(url, filepath, filename_prefix)
+
+    return web.Response(text=resp)
+
+
 
 """Start the bot."""
 # Register startup hook to initialize webhook
@@ -58,7 +79,10 @@ webhook_requests_handler.register(app, path=f"{WEBHOOK_PATH}/{BOT_TOKEN}")
 setup_application(app, dp, bot=bot)
 
 app.add_routes([web.get('/', hello)])
-    
+
+app.add_routes([web.get('/cities', refresh_schedule)])
+
+
 if __name__ == "__main__":
     # And finally start webserver
     # web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
