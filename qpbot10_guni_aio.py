@@ -42,7 +42,7 @@ async def hello(request):
 
 async def refresh_schedule(request):
     filename_prefix = 'schedule_data'
-    base_filepath = 'schedules'
+    base_filepath = './schedules'
     cities = os.listdir(base_filepath)
     base_url = QP_URL
     resp = "\n".join(cities)
