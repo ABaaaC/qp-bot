@@ -1,11 +1,12 @@
 
-from src.schedule_loader import read_or_download_schedule, GameType
+from src.schedule_loader import read_or_download_schedule, GameType, is_schedule_expired
 
 from dotenv import dotenv_values
 config = dotenv_values(".env")
 BOT_TOKEN = config.get("BOT_TOKEN")
 BASE_WEBHOOK_URL = config.get("BASE_WEBHOOK_URL")
 WEBHOOK_PATH = config.get("WEBHOOK_PATH")
+QP_URL = config.get("QP_URL")
 
 # bind localhost only to prevent any external access
 WEB_SERVER_HOST = config.get("WEB_SERVER_HOST")
@@ -64,38 +65,50 @@ async def start(message: Message, state: FSMContext) -> None:
     logger.info("Start is really calling")
     custom_keyboard = [[InlineKeyboardButton(text="Moscow", callback_data="moscow")]]
     reply_markup = InlineKeyboardMarkup(inline_keyboard=custom_keyboard)
-    await message.answer(text="Please choose a city:", reply_markup=reply_markup)
+    # await message.answer(text="Please choose a city:", reply_markup=reply_markup)
+    await message.answer(text="Пожалуйста, выберете город:", reply_markup=reply_markup)
 
+
+async def main_menu_message(query, city):
+    # await query.message.edit_text(f"Great! You chose {city}.\n"
+    #                         "Now, please choose an option from the main menu:",
+    #                         reply_markup=main_menu_keyboard())
+    await query.message.edit_text(f"Отлично! Ваш выбор - {city}.\n"
+                        "А сейчас, выберите из меню, что душе угодно:",
+                        reply_markup=main_menu_keyboard())
 
 @form_router.callback_query(ConversationStates.CITY_CHOICE)
 async def city_choice(query: types.CallbackQuery, state: FSMContext) -> None:
     logger.info("city_choice STARTED")
     await state.set_data({'city': query.data, 'filter_game_flags': DEFAULT_FILTER})
     city = query.data
-    await state.update_data({'url': f'https://{city}.quizplease.ru'})
-    await query.message.edit_text(f"Great! You chose {city}.\n"
-                            "Now, please choose an option from the main menu:",
-                            reply_markup=main_menu_keyboard())
+    await state.update_data({'url': f'https://{city}.{QP_URL}'})
+
+    await main_menu_message(query, city)
     
     await state.set_state(ConversationStates.MAIN_MENU)
     logger.info("city_choice DONE")
 
 def main_menu_keyboard() -> InlineKeyboardMarkup:
+    # keyboard = [
+    #     [InlineKeyboardButton(text = "Schedule", callback_data="schedule"),
+    #     InlineKeyboardButton(text = "Filter", callback_data='filter_game')]
+    # ]    
     keyboard = [
-        [InlineKeyboardButton(text = "Schedule", callback_data="schedule"),
-        # InlineKeyboardButton(text = "Something", callback_data="something"),
-        InlineKeyboardButton(text = "Filter", callback_data='filter_game')]
+        [InlineKeyboardButton(text = "Расписание", callback_data="schedule"),
+        InlineKeyboardButton(text = "Фильтры", callback_data='filter_game')]
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 async def load_schedule(state: FSMContext):
     state_data = await state.get_data()
-    if 'schedule' not in state_data.keys() or state_data['schedule'] is None:
-        schedule = read_or_download_schedule(state_data.get('url') + "/schedule", expiration_hours=24)
+    if 'schedule' not in state_data.keys() or state_data['schedule'] is None \
+            or is_schedule_expired(state_data.get('schedule_timestamp'), state_data.get('city')):
+        schedule, timestamp = read_or_download_schedule(state_data.get('url') + "/schedule", expiration_hours=24)
         logger.info(schedule[0])
         logger.info("Done!")
 
-        await state.update_data({'schedule': schedule})
+        await state.update_data({'schedule': schedule, 'schedule_timestamp': timestamp})
     
     if 'filtered_schedule' not in state_data.keys() or state_data['filtered_schedule'] is None:
         await state.update_data({'filtered_schedule': schedule})
@@ -116,16 +129,10 @@ async def main_menu(query: types.CallbackQuery, state: FSMContext) -> None:
         await state.update_data({'num_items_per_page': num_items_per_page})
         await update_schedule_message(query.message, state, current_page, num_pages)  # Pass query.from_user to update_schedule_message
 
-    # elif query.data == "something":
-    #     logger.info("something")
-    #     await query.message.answer("You chose 'Something'.")  
-
-
     elif query.data == "back_to_menu":
         city = await state.get_data('city')
-        await query.message.edit_text(f"Great! You chose {city}.\n"  # Replace context.user_data with query.from_user
-                                      "Now, please choose an option from the main menu:",
-                                      reply_markup=main_menu_keyboard())
+        await main_menu_message(query, city)
+
     elif query.data == 'filter_game':
         await state.set_state(ConversationStates.FILTER)
         logger.info("Edit Filters")
@@ -142,7 +149,8 @@ def get_filter_button_builder(filter_game_flags):
             InlineKeyboardButton(text = val.name + f" {CHOOSE_EMOJI[filter_game_flags.get(val)]}", \
                         callback_data=val.name)
         )
-    builder.add(InlineKeyboardButton(text = "Save", callback_data='save'))
+    # builder.add(InlineKeyboardButton(text = "Save", callback_data='save'))
+    builder.add(InlineKeyboardButton(text = "Сохранить", callback_data='save'))
     
     builder.adjust( *( [1] * (len(GameType) + 1) ) )
 
@@ -152,7 +160,8 @@ async def filter_game(message: Message, state: FSMContext):
     state_data = await state.get_data()
     filter_game_flags = state_data.get('filter_game_flags')
     builder = get_filter_button_builder(filter_game_flags)
-    await message.edit_text(text = 'Choose interesting games:', reply_markup=builder.as_markup())
+    # await message.edit_text(text = 'Choose interesting games:', reply_markup=builder.as_markup())
+    await message.edit_text(text = 'Какие игры оставить?', reply_markup=builder.as_markup())
 
 @form_router.callback_query(ConversationStates.FILTER)
 async def process_filters(query: types.CallbackQuery, state: FSMContext):
@@ -168,14 +177,11 @@ async def process_filters(query: types.CallbackQuery, state: FSMContext):
         filered_schedule = list(filter(lambda game: filter_game_flags.get(game.get('type')), schedule))
         await state.update_data({'filtered_schedule': filered_schedule})
 
-        await query.message.edit_text(f"Great! You chose {city}.\n"
-                              "Now, please choose an option from the main menu:",
-                              reply_markup=main_menu_keyboard())
+        await main_menu_message(query, city)
     
         await state.set_state(ConversationStates.MAIN_MENU)
 
     elif query.data in GameType.__members__:
-        # opt, ind = query.data.split('_')
         name = query.data
         game_type = getattr(GameType, name)
         filter_game_flags = state_data.get('filter_game_flags')
@@ -195,13 +201,10 @@ def get_schedule_text(schedule, start_index, end_index):
         if game['type'] == GameType.online:
             game_loc = f"{game['date']}, {game['time']}, ({game['price']})"
         else:
-            game_loc = f"{game['date']} at {game['time']} in {game['place']} ({game['price']})"
+            game_loc = f"{game['date']} в {game['time']} в {game['place']} ({game['price']})"
 
         game_titles.append(game_name + ' - ' + game_loc)
                    
-    # game_titles = [f"{i + 1 + start_index}. {game['title']} #{game['package_number']}" + ' - ' + \
-    #                f"{game['date']} at {game['time']} in {game['place']} ({game['price']})" \
-    #                for i, game in enumerate(schedule[start_index:end_index])]
     schedule_text = "\n".join(game_titles)
     return schedule_text
 
@@ -209,6 +212,7 @@ async def update_schedule_message(message: Message, state: FSMContext, current_p
     logger.info("update_schedule_message STARTED")
 
     state_data = await state.get_data()
+    city = state_data.get('city')
     schedule = state_data.get('filtered_schedule')
     num_items_per_page = state_data.get('num_items_per_page')
     url = state_data.get('url')
@@ -236,9 +240,10 @@ async def update_schedule_message(message: Message, state: FSMContext, current_p
         text_callback = 'pass'
     builder.add(InlineKeyboardButton(text = "➡️", callback_data=text_callback))
 
-    builder.add(InlineKeyboardButton(text = "🔙 Back", callback_data="back_to_menu"))
+    builder.add(InlineKeyboardButton(text = "🔙 Назад", callback_data="back_to_menu"))
 
-    message_text = f"Here is the schedule for your chosen city (Page {current_page}/{num_pages}):\n{schedule_text}"
+    # message_text = f"Here is the schedule for your chosen city (Page {current_page}/{num_pages}):\n{schedule_text}"
+    message_text = f"КвизПлиз{city.capitalize()} предлагает следующие игры, [{current_page}/{num_pages}]: \n{schedule_text}"
     
     builder.adjust(end_index-start_index, 2, 1)
     
@@ -278,9 +283,7 @@ async def button_callback(query: types.CallbackQuery, state: FSMContext):
     elif query.data == "back_to_menu":
         await state.set_state(ConversationStates.MAIN_MENU)
         city = state_data.get('city')
-        await query.message.edit_text(f"Great! You chose {city}.\n"  # Replace context.user_data with query.from_user
-                                      "Now, please choose an option from the main menu:",
-                                      reply_markup=main_menu_keyboard())
+        await main_menu_message(query, city)
     
     logger.info("button_callback DONE")
 
