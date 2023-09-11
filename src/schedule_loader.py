@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 filename_prefix = 'schedule_data'
 base_filepath = 'schedules'
 
-def is_file_expired(filepath, filename_prefix, expiration_hours):
+def is_file_expired(filepath: str, filename_prefix: str, expiration_hours: int):
     """Check if the file is expired based on filename."""
     files_in_directory = [f for f in os.listdir(filepath) if f.startswith(filename_prefix)]
     
@@ -96,7 +96,7 @@ def read_or_download_schedule(url, expiration_hours=24):
         
         for game in schedule_data:
             for key, _ in game.items():
-                if key == 'type':
+                if key == 'type' and isinstance(game[key], str):
                     # game_type = GameType[game[key]]
                     game_type = getattr(GameType, game[key])
                     game.update({'type': game_type})

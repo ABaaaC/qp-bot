@@ -9,16 +9,16 @@ WEBHOOK_PATH = config.get("WEBHOOK_PATH")
 WEB_SERVER_HOST = config.get("WEB_SERVER_HOST")
 # Port for incoming request from reverse proxy. Should be any available port
 WEB_SERVER_PORT = config.get("WEB_SERVER_PORT")
-#!/usr/bin/env python
+QP_URL = config.get("QP_URL")
+
+from aiogram import Bot
 
 import logging
 import os
 
-from aiogram import Bot
-
 from aiohttp import web
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
-from src.telebot10_aio import bot, dp, QP_URL
+from src.bot import bot, dp
 
 from src.schedule_loader import download_schedule
 
@@ -57,6 +57,7 @@ async def refresh_schedule(request):
 
 
 
+
 """Start the bot."""
 # Register startup hook to initialize webhook
 dp.startup.register(on_startup)
@@ -87,4 +88,3 @@ if __name__ == "__main__":
     # And finally start webserver
     web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
     # pass
-

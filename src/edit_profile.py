@@ -1,0 +1,171 @@
+from aiogram import Router
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.enums import ParseMode
+
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.fsm.context import FSMContext
+from aiogram.types import (
+    Message,
+    InlineKeyboardButton,
+)
+
+# form_router = Router()
+# from src.telebot10_aio import form_router, BOT_TOKEN
+form_router = Router()
+
+class ProfileState(StatesGroup):
+    Start = State()
+    team_name = State()
+    name = State()
+    email = State()
+    phone = State()
+    date_of_birth_day = State()
+    date_of_birth_month = State()
+    date_of_birth_year = State()
+    gender = State()
+    Finish = State()
+
+async def return_actual_message(message: Message, state: FSMContext):
+    await message.delete()
+    state_data = await state.get_data()
+    message = state_data.get('actual_message') # type: ignore
+    # message = bot.mess
+    return message
+
+# @form_router.message(lambda message: message.text == 'Edit Profile')
+async def enter_test(message: Message, state: FSMContext):
+    # await ProfileState.team_name.set()
+    await state.set_state(ProfileState.team_name)
+    await message.edit_text("Ваша команда (можно несколько в разных строках):")
+
+@form_router.message(ProfileState.team_name)
+async def answer_team_name(message: Message, state: FSMContext):
+
+    state_data = await state.get_data()
+    profile_data = state_data.get('profile_data') if state_data.get('profile_data') is not None else dict()
+    teams = message.text.split('\n')
+    profile_data.update(team_name=teams)
+    await state.update_data(profile_data=profile_data)
+
+    # await state.update_data(team_name=message.text)
+
+    message = await return_actual_message(message, state)
+
+    await state.set_state(ProfileState.name)
+    await message.edit_text("Please enter your Name:")
+
+@form_router.message(ProfileState.name)
+async def answer_name(message: Message, state: FSMContext):
+    state_data = await state.get_data()
+    profile_data = state_data.get('profile_data')
+    profile_data.update(name=message.text)
+    await state.update_data(profile_data=profile_data)
+
+    # await state.update_data(name=message.text)
+
+    message = await return_actual_message(message, state)
+
+    await state.set_state(ProfileState.email)
+    await message.edit_text("Please enter your email:")
+
+@form_router.message(ProfileState.email)
+async def answer_email(message: Message, state: FSMContext):
+    state_data = await state.get_data()
+    profile_data = state_data.get('profile_data')
+    profile_data.update(email=message.text)
+    await state.update_data(profile_data=profile_data)
+
+    # await state.update_data(email=message.text)
+
+    message = await return_actual_message(message, state)
+ 
+    await state.set_state(ProfileState.phone)
+    await message.edit_text("Please enter your phone:")
+
+@form_router.message(ProfileState.phone)
+async def answer_phone(message: Message, state: FSMContext):
+    state_data = await state.get_data()
+    profile_data = state_data.get('profile_data')
+    profile_data.update(phone=message.text)
+    await state.update_data(profile_data=profile_data)
+
+    # await state.update_data(phone=message.text)
+
+    message = await return_actual_message(message, state)
+
+    await state.set_state(ProfileState.date_of_birth_day)
+    await message.edit_text("Please enter your date_of_birth_day:")
+
+@form_router.message(ProfileState.date_of_birth_day)
+async def answer_date_of_birth_day(message: Message, state: FSMContext):
+    # await state.update_data(date_of_birth_day=message.text)
+    state_data = await state.get_data()
+    profile_data = state_data.get('profile_data')
+    profile_data.update(date_of_birth_day=message.text)
+    await state.update_data(profile_data=profile_data)
+
+    message = await return_actual_message(message, state)
+
+    await state.set_state(ProfileState.date_of_birth_month)
+    await message.edit_text("Please enter your date_of_birth_month:")
+
+@form_router.message(ProfileState.date_of_birth_month)
+async def answer_date_of_birth_month(message: Message, state: FSMContext):
+    # await state.update_data(date_of_birth_month=message.text)
+    state_data = await state.get_data()
+    profile_data = state_data.get('profile_data')
+    profile_data.update(date_of_birth_month=message.text)
+    await state.update_data(profile_data=profile_data)
+
+    message = await return_actual_message(message, state)
+
+    await state.set_state(ProfileState.date_of_birth_year)
+    await message.edit_text("Please enter your date_of_birth_year:")
+
+@form_router.message(ProfileState.date_of_birth_year)
+async def answer_date_of_birth_year(message: Message, state: FSMContext):
+    # await state.update_data(date_of_birth_year=message.text)
+    state_data = await state.get_data()
+    profile_data = state_data.get('profile_data')
+    profile_data.update(date_of_birth_year=message.text)
+    await state.update_data(profile_data=profile_data)
+
+    message = await return_actual_message(message, state)
+
+    await state.set_state(ProfileState.gender)
+    await message.edit_text("Please enter your gender:")
+
+
+@form_router.message(ProfileState.gender)
+async def answer_gender(message: Message, state: FSMContext):
+
+    state_data = await state.get_data()
+    profile_data = state_data.get('profile_data')
+    profile_data.update(gender=message.text)
+    await state.update_data(profile_data=profile_data)
+
+    # await state.update_data(gender=message.text)
+
+    message = await return_actual_message(message, state)
+
+    await state.set_state(ProfileState.Finish)
+    builder = InlineKeyboardBuilder()
+    
+    builder.add(InlineKeyboardButton(text = "Сохранить", callback_data='save'))
+
+    profile = f"Your Profile:\n" +\
+        f"Team Name: {', '.join(profile_data['team_name'])}\n" +\
+        f"Name: {profile_data['name']}\n" +\
+        f"Email: {profile_data['email']}\n" +\
+        f"Phone: {profile_data['phone']}\n" +\
+        f"Date of Birth: {profile_data['date_of_birth_day']}/{profile_data['date_of_birth_month']}/{profile_data['date_of_birth_year']}\n" +\
+        f"Gender: {profile_data['gender']}"
+
+    await message.edit_text(profile)
+    await message.edit_reply_markup(
+                        # text= profile,
+                        parse_mode=ParseMode.MARKDOWN,
+                        reply_markup=builder.as_markup()
+                        )
+
+    
