@@ -84,9 +84,9 @@ async def city_choice(query: types.CallbackQuery, state: FSMContext) -> None:
     city = query.data
     await state.update_data({'url': f'https://{city}.{QP_URL}'})
     logger.info("Reading or Downloading Schedule")
-    _ = await load_schedule(state)
 
     await main_menu_message(query, city)
+    _ = await load_schedule(state)
     
     await state.set_state(ConversationStates.MAIN_MENU)
     logger.info("city_choice DONE")
