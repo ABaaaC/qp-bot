@@ -9,16 +9,16 @@ WEBHOOK_PATH = config.get("WEBHOOK_PATH")
 WEB_SERVER_HOST = config.get("WEB_SERVER_HOST")
 # Port for incoming request from reverse proxy. Should be any available port
 WEB_SERVER_PORT = config.get("WEB_SERVER_PORT")
-#!/usr/bin/env python
+QP_URL = config.get("QP_URL")
+
+from aiogram import Bot
 
 import logging
 import os
 
-from aiogram import Bot
-
 from aiohttp import web
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
-from src.telebot10_aio import bot, dp, QP_URL
+from src.bot import bot, dp
 
 from src.schedule_loader import download_schedule
 
@@ -42,9 +42,7 @@ async def hello(request):
 
 async def refresh_schedule(request):
     filename_prefix = 'schedule_data'
-    base_filepath = './schedules'
-    dirs = os.listdir('./')
-    logger.info(dirs)
+    base_filepath = 'schedules'
     cities = os.listdir(base_filepath)
     base_url = QP_URL
     resp = "\n".join(cities)
@@ -56,6 +54,7 @@ async def refresh_schedule(request):
         _ = download_schedule(url, filepath, filename_prefix)
 
     return web.Response(text=resp)
+
 
 
 
