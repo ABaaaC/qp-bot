@@ -41,6 +41,7 @@ import math
 from datetime import datetime
 from pytz import timezone
 
+from aiogram.enums import ParseMode
 from aiogram import Bot, Dispatcher, types, Router #,F
 from aiogram.filters import CommandStart
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -246,8 +247,8 @@ async def lottery_send_callback(query: types.CallbackQuery, state: FSMContext) -
         else:
             formdata.add_field(LOTTERY_FIELDS.get(k), v[team_id])
 
-    # formdata.add_field('game_id', game_id)
-    formdata.add_field('game_id', 3)
+    formdata.add_field('game_id', game_id)
+    # formdata.add_field('game_id', 3)
 
     url = LOTTERY_URL
 
@@ -257,10 +258,15 @@ async def lottery_send_callback(query: types.CallbackQuery, state: FSMContext) -
                 response_data = await response.json()
                 if response_data.get('success'):
                     logger.info(f"Form submitted successfully! Message: {response_data.get('message')}")
-                    await query.message.edit_text(f"Form submitted successfully! Message: {response_data.get('message')}")
+                    await query.message.edit_text(f"Успех! Ваш счастливый номер: {response_data.get('message')}")
                 else:
                     logger.error(f"Failed to submit the form. Message: {response_data.get('message')}")
-                    await query.message.edit_text(f"Failed to submit the form. Message: {response_data.get('message')}")
+                    response_message = response_data.get('message')
+
+                    await query.message.edit_text(
+                        text=f"{response_message.split('<br>')[0]}",
+                        parse_mode=ParseMode.HTML
+                        )
     
     print(response_data)
     new_message = await query.message.answer(text=f"Ваш город всё ещё {get_city_name(city=city)}.\n"

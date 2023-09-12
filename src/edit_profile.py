@@ -7,7 +7,14 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import (
     Message,
     InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    CallbackQuery,
 )
+
+import phonenumbers
+import re
+from datetime import datetime
+import calendar
 
 # form_router = Router()
 # from src.telebot10_aio import form_router, BOT_TOKEN
@@ -52,7 +59,7 @@ async def answer_team_name(message: Message, state: FSMContext):
     message = await return_actual_message(message, state)
 
     await state.set_state(ProfileState.name)
-    await message.edit_text("Please enter your Name:")
+    await message.edit_text("Введите имя:")
 
 @form_router.message(ProfileState.name)
 async def answer_name(message: Message, state: FSMContext):
@@ -66,87 +73,148 @@ async def answer_name(message: Message, state: FSMContext):
     message = await return_actual_message(message, state)
 
     await state.set_state(ProfileState.email)
-    await message.edit_text("Please enter your email:")
+    await message.edit_text("Ваш e-mail:")
 
 @form_router.message(ProfileState.email)
 async def answer_email(message: Message, state: FSMContext):
-    state_data = await state.get_data()
-    profile_data = state_data.get('profile_data')
-    profile_data.update(email=message.text)
-    await state.update_data(profile_data=profile_data)
 
-    # await state.update_data(email=message.text)
+    email_str = message.text
+    pattern = re.compile(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)")
+    valid_flag = bool(pattern.match(email_str))
 
-    message = await return_actual_message(message, state)
- 
-    await state.set_state(ProfileState.phone)
-    await message.edit_text("Please enter your phone:")
+    if valid_flag:
+        state_data = await state.get_data()
+        profile_data = state_data.get('profile_data')
+        profile_data.update(email=message.text)
+        await state.update_data(profile_data=profile_data)
+
+        # await state.update_data(email=message.text)
+
+        message = await return_actual_message(message, state)
+    
+        await state.set_state(ProfileState.phone)
+        await message.edit_text("Номер телефона:")
+
+    else:
+
+        message = await return_actual_message(message, state)
+        await message.edit_text("Введите настоящий email:")
 
 @form_router.message(ProfileState.phone)
 async def answer_phone(message: Message, state: FSMContext):
-    state_data = await state.get_data()
-    profile_data = state_data.get('profile_data')
-    profile_data.update(phone=message.text)
-    await state.update_data(profile_data=profile_data)
+    phone_number_str = message.text
+    try:
+        phone_number = phonenumbers.parse(phone_number_str)
+        valid_flag = phonenumbers.is_valid_number(phone_number)
+    except phonenumbers.NumberParseException:
+        valid_flag = False
 
-    # await state.update_data(phone=message.text)
+    if valid_flag:
 
-    message = await return_actual_message(message, state)
+        phone = phonenumbers.format_number(phone_number, phonenumbers.PhoneNumberFormat.E164)
 
-    await state.set_state(ProfileState.date_of_birth_day)
-    await message.edit_text("Please enter your date_of_birth_day:")
+        state_data = await state.get_data()
+        profile_data = state_data.get('profile_data')
+        profile_data.update(phone=phone)
+        await state.update_data(profile_data=profile_data)
+
+        # await state.update_data(phone=message.text)
+
+        message = await return_actual_message(message, state)
+
+        await state.set_state(ProfileState.date_of_birth_year)
+        await message.edit_text("Введите год вашего рождения:")
+
+    else:
+        message = await return_actual_message(message, state)
+        await message.edit_text("Введите существующий номер телефона:")
+
+@form_router.message(ProfileState.date_of_birth_year)
+async def answer_date_of_birth_year(message: Message, state: FSMContext):
+    # await state.update_data(date_of_birth_year=message.text)
+    current_year = datetime.now().year
+
+    valid_flag = message.text.isdigit() and (1900 < int(message.text) < current_year)
+    if valid_flag:
+        state_data = await state.get_data()
+        profile_data = state_data.get('profile_data')
+        profile_data.update(date_of_birth_year=message.text)
+        await state.update_data(profile_data=profile_data)
+
+        message = await return_actual_message(message, state)
+
+        await state.set_state(ProfileState.date_of_birth_month)
+        await message.edit_text("Номер месяца рождения:")
+    else:
+        message = await return_actual_message(message, state)
+        await message.edit_text("Введите корректный год рождения")
+
+@form_router.message(ProfileState.date_of_birth_month)
+async def answer_date_of_birth_month(message: Message, state: FSMContext):
+    # await state.update_data(date_of_birth_month=message.text)
+
+    valid_flag = message.text.isdigit() and (1 <= int(message.text) <= 12)
+
+    if valid_flag:
+        state_data = await state.get_data()
+        profile_data = state_data.get('profile_data')
+        profile_data.update(date_of_birth_month=message.text)
+        await state.update_data(profile_data=profile_data)
+
+        message = await return_actual_message(message, state)
+
+        await state.set_state(ProfileState.date_of_birth_day)
+        await message.edit_text("День рождения:")
+    else:
+
+        message = await return_actual_message(message, state)
+        await message.edit_text("Введите корректный номер месяца")
 
 @form_router.message(ProfileState.date_of_birth_day)
 async def answer_date_of_birth_day(message: Message, state: FSMContext):
     # await state.update_data(date_of_birth_day=message.text)
     state_data = await state.get_data()
     profile_data = state_data.get('profile_data')
-    profile_data.update(date_of_birth_day=message.text)
-    await state.update_data(profile_data=profile_data)
 
-    message = await return_actual_message(message, state)
+    year = profile_data.get('date_of_birth_year')
+    month = profile_data.get('date_of_birth_month')
+    _, days_in_month = calendar.monthrange(int(year), int(month))
 
-    await state.set_state(ProfileState.date_of_birth_month)
-    await message.edit_text("Please enter your date_of_birth_month:")
+    valid_flag = message.text.isdigit() and (1 <= int(message.text) <= days_in_month)
 
-@form_router.message(ProfileState.date_of_birth_month)
-async def answer_date_of_birth_month(message: Message, state: FSMContext):
-    # await state.update_data(date_of_birth_month=message.text)
-    state_data = await state.get_data()
-    profile_data = state_data.get('profile_data')
-    profile_data.update(date_of_birth_month=message.text)
-    await state.update_data(profile_data=profile_data)
+    if valid_flag:
+        profile_data.update(date_of_birth_day=message.text)
+        await state.update_data(profile_data=profile_data)
 
-    message = await return_actual_message(message, state)
+        message = await return_actual_message(message, state)
 
-    await state.set_state(ProfileState.date_of_birth_year)
-    await message.edit_text("Please enter your date_of_birth_year:")
+        await state.set_state(ProfileState.gender)
+        await message.edit_text("Выберите ваш пол:")
 
-@form_router.message(ProfileState.date_of_birth_year)
-async def answer_date_of_birth_year(message: Message, state: FSMContext):
-    # await state.update_data(date_of_birth_year=message.text)
-    state_data = await state.get_data()
-    profile_data = state_data.get('profile_data')
-    profile_data.update(date_of_birth_year=message.text)
-    await state.update_data(profile_data=profile_data)
-
-    message = await return_actual_message(message, state)
-
-    await state.set_state(ProfileState.gender)
-    await message.edit_text("Please enter your gender:")
+        await message.edit_reply_markup(
+                text = "Выберите ваш пол:",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text='М', callback_data='0'),
+                        InlineKeyboardButton(text='Ж', callback_data='1')
+                    ]
+                ])
+            )
 
 
-@form_router.message(ProfileState.gender)
-async def answer_gender(message: Message, state: FSMContext):
+    else:
+
+        message = await return_actual_message(message, state)
+        await message.edit_text("Введите корректный номер дня")
+
+# @form_router.message(ProfileState.gender)
+@form_router.callback_query(ProfileState.gender)
+async def answer_gender(query: CallbackQuery, state: FSMContext):
 
     state_data = await state.get_data()
     profile_data = state_data.get('profile_data')
-    profile_data.update(gender=message.text)
+    profile_data.update(gender=query.data)
     await state.update_data(profile_data=profile_data)
-
-    # await state.update_data(gender=message.text)
-
-    message = await return_actual_message(message, state)
 
     await state.set_state(ProfileState.Finish)
     builder = InlineKeyboardBuilder()
@@ -159,10 +227,10 @@ async def answer_gender(message: Message, state: FSMContext):
         f"Email: {profile_data['email']}\n" +\
         f"Phone: {profile_data['phone']}\n" +\
         f"Date of Birth: {profile_data['date_of_birth_day']}/{profile_data['date_of_birth_month']}/{profile_data['date_of_birth_year']}\n" +\
-        f"Gender: {profile_data['gender']}"
+        f"Gender: {'Ж' if profile_data['gender'] == '1' else 'М'}"
 
-    await message.edit_text(profile)
-    await message.edit_reply_markup(
+    await query.message.edit_text(profile)
+    await query.message.edit_reply_markup(
                         # text= profile,
                         parse_mode=ParseMode.MARKDOWN,
                         reply_markup=builder.as_markup()

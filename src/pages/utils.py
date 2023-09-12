@@ -56,7 +56,7 @@ def main_menu_keyboard(city: str) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(text = "Расписание", callback_data="schedule"),
                 InlineKeyboardButton(text = "Фильтры", callback_data='filter_game'),
-                InlineKeyboardButton(text = "Лотерея", callback_data='lottery'),
+                InlineKeyboardButton(text = "Лототрон", callback_data='lottery'),
             ]
         ]
     else:
@@ -152,7 +152,7 @@ def filter_today_games(schedule: List[dict], city: str) -> List[dict]:
     for game in schedule:
         if  game.get('type') == GameType.online:
             continue
-        
+
         date_str = game['date']
         time_str = game['time']
 
