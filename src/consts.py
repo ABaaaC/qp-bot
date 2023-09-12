@@ -77,7 +77,7 @@ def get_city_name(city: str | None = None, state_data: Dict[str, Any] | None = N
     assert city is not None or state_data is not None
     if city is None and state_data is not None:
         city = state_data.get('city')
-    return CITY_TO_RU_CITY.get(city)
+    return CITY_TO_RU_CITY.get(city) # type: ignore
     
 
 

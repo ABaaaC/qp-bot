@@ -49,12 +49,10 @@ async def enter_test(message: Message, state: FSMContext):
 async def answer_team_name(message: Message, state: FSMContext):
 
     state_data = await state.get_data()
-    profile_data = state_data.get('profile_data') if state_data.get('profile_data') is not None else dict()
-    teams = message.text.split('\n')
+    profile_data = state_data.get('profile_data', dict()) if state_data.get('profile_data') is not None else dict()
+    teams = message.text.split('\n') # type: ignore
     profile_data.update(team_name=teams)
     await state.update_data(profile_data=profile_data)
-
-    # await state.update_data(team_name=message.text)
 
     message = await return_actual_message(message, state)
 
@@ -65,7 +63,7 @@ async def answer_team_name(message: Message, state: FSMContext):
 async def answer_name(message: Message, state: FSMContext):
     state_data = await state.get_data()
     profile_data = state_data.get('profile_data')
-    profile_data.update(name=message.text)
+    profile_data.update(name=message.text) # type: ignore
     await state.update_data(profile_data=profile_data)
 
     # await state.update_data(name=message.text)
@@ -80,12 +78,12 @@ async def answer_email(message: Message, state: FSMContext):
 
     email_str = message.text
     pattern = re.compile(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)")
-    valid_flag = bool(pattern.match(email_str))
+    valid_flag = bool(pattern.match(email_str)) # type: ignore
 
     if valid_flag:
         state_data = await state.get_data()
         profile_data = state_data.get('profile_data')
-        profile_data.update(email=message.text)
+        profile_data.update(email=message.text) # type: ignore
         await state.update_data(profile_data=profile_data)
 
         # await state.update_data(email=message.text)
@@ -104,18 +102,18 @@ async def answer_email(message: Message, state: FSMContext):
 async def answer_phone(message: Message, state: FSMContext):
     phone_number_str = message.text
     try:
-        phone_number = phonenumbers.parse(phone_number_str)
+        phone_number = phonenumbers.parse(phone_number_str) # type: ignore
         valid_flag = phonenumbers.is_valid_number(phone_number)
     except phonenumbers.NumberParseException:
         valid_flag = False
 
     if valid_flag:
 
-        phone = phonenumbers.format_number(phone_number, phonenumbers.PhoneNumberFormat.E164)
+        phone = phonenumbers.format_number(phone_number, phonenumbers.PhoneNumberFormat.E164) # type: ignore
 
         state_data = await state.get_data()
         profile_data = state_data.get('profile_data')
-        profile_data.update(phone=phone)
+        profile_data.update(phone=phone) # type: ignore
         await state.update_data(profile_data=profile_data)
 
         # await state.update_data(phone=message.text)
@@ -134,11 +132,11 @@ async def answer_date_of_birth_year(message: Message, state: FSMContext):
     # await state.update_data(date_of_birth_year=message.text)
     current_year = datetime.now().year
 
-    valid_flag = message.text.isdigit() and (1900 < int(message.text) < current_year)
+    valid_flag = message.text.isdigit() and (1900 < int(message.text) < current_year)  # type: ignore
     if valid_flag:
         state_data = await state.get_data()
         profile_data = state_data.get('profile_data')
-        profile_data.update(date_of_birth_year=message.text)
+        profile_data.update(date_of_birth_year=message.text) # type: ignore
         await state.update_data(profile_data=profile_data)
 
         message = await return_actual_message(message, state)
@@ -153,12 +151,12 @@ async def answer_date_of_birth_year(message: Message, state: FSMContext):
 async def answer_date_of_birth_month(message: Message, state: FSMContext):
     # await state.update_data(date_of_birth_month=message.text)
 
-    valid_flag = message.text.isdigit() and (1 <= int(message.text) <= 12)
+    valid_flag = message.text.isdigit() and (1 <= int(message.text) <= 12) # type: ignore
 
     if valid_flag:
         state_data = await state.get_data()
         profile_data = state_data.get('profile_data')
-        profile_data.update(date_of_birth_month=message.text)
+        profile_data.update(date_of_birth_month=message.text) # type: ignore
         await state.update_data(profile_data=profile_data)
 
         message = await return_actual_message(message, state)
@@ -176,14 +174,14 @@ async def answer_date_of_birth_day(message: Message, state: FSMContext):
     state_data = await state.get_data()
     profile_data = state_data.get('profile_data')
 
-    year = profile_data.get('date_of_birth_year')
-    month = profile_data.get('date_of_birth_month')
+    year = profile_data.get('date_of_birth_year') # type: ignore
+    month = profile_data.get('date_of_birth_month') # type: ignore
     _, days_in_month = calendar.monthrange(int(year), int(month))
 
-    valid_flag = message.text.isdigit() and (1 <= int(message.text) <= days_in_month)
+    valid_flag = message.text.isdigit() and (1 <= int(message.text) <= days_in_month) # type: ignore
 
     if valid_flag:
-        profile_data.update(date_of_birth_day=message.text)
+        profile_data.update(date_of_birth_day=message.text) # type: ignore
         await state.update_data(profile_data=profile_data)
 
         message = await return_actual_message(message, state)
@@ -212,7 +210,7 @@ async def answer_date_of_birth_day(message: Message, state: FSMContext):
 async def answer_gender(query: CallbackQuery, state: FSMContext):
 
     state_data = await state.get_data()
-    profile_data = state_data.get('profile_data')
+    profile_data = state_data.get('profile_data', dict())
     profile_data.update(gender=query.data)
     await state.update_data(profile_data=profile_data)
 
@@ -221,17 +219,16 @@ async def answer_gender(query: CallbackQuery, state: FSMContext):
     
     builder.add(InlineKeyboardButton(text = "Сохранить", callback_data='save'))
 
-    profile = f"Your Profile:\n" +\
-        f"Team Name: {', '.join(profile_data['team_name'])}\n" +\
-        f"Name: {profile_data['name']}\n" +\
+    profile = f"Ваш профиль:\n" +\
+        f"Имя: {profile_data['name']}\n" +\
+        f"Имя команды: {', '.join(profile_data['team_name'])}\n" +\
         f"Email: {profile_data['email']}\n" +\
-        f"Phone: {profile_data['phone']}\n" +\
-        f"Date of Birth: {profile_data['date_of_birth_day']}/{profile_data['date_of_birth_month']}/{profile_data['date_of_birth_year']}\n" +\
-        f"Gender: {'Ж' if profile_data['gender'] == '1' else 'М'}"
+        f"Телефон: {profile_data['phone']}\n" +\
+        f"День рождения: {profile_data['date_of_birth_day']}/{profile_data['date_of_birth_month']}/{profile_data['date_of_birth_year']}\n" +\
+        f"Пол: {'Ж' if profile_data['gender'] == '1' else 'М'}"
 
-    await query.message.edit_text(profile)
-    await query.message.edit_reply_markup(
-                        # text= profile,
+    await query.message.edit_text(profile) # type: ignore
+    await query.message.edit_reply_markup( # type: ignore
                         parse_mode=ParseMode.MARKDOWN,
                         reply_markup=builder.as_markup()
                         )

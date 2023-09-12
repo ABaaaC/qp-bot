@@ -48,7 +48,7 @@ async def refresh_schedule(request):
     resp = "\n".join(cities)
 
     for city in cities:
-        url = 'https://' + city + '.' + base_url + "/schedule"
+        url = 'https://' + city + '.' + base_url + "/schedule" # type: ignore
     
         filepath = os.path.join(base_filepath, city)
         _ = download_schedule(url, filepath, filename_prefix)

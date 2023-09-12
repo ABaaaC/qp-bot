@@ -20,6 +20,8 @@ from aiohttp import web
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from src.bot import bot, dp
 
+from src.telebot10_aio import user_ids
+
 from src.schedule_loader import download_schedule
 
 # Define the number of items per page
@@ -36,6 +38,11 @@ async def on_startup(bot: Bot) -> None:
     # certificate to Telegram
     await bot.set_webhook(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}/{BOT_TOKEN}")
 
+async def on_shutdown(bot: Bot) -> None:
+    # Send a message to all users when the bot shuts down
+    for user_id in user_ids:
+        await bot.send_message(user_id, "Бот был перезагружен для свежего обновления. Хорошего дня!🫡")
+
 
 async def hello(request):
     return web.Response(text="Hello, world")
@@ -48,7 +55,7 @@ async def refresh_schedule(request):
     resp = "\n".join(cities)
 
     for city in cities:
-        url = 'https://' + city + '.' + base_url + "/schedule"
+        url = 'https://' + city + '.' + base_url + "/schedule" # type: ignore
     
         filepath = os.path.join(base_filepath, city)
         _ = download_schedule(url, filepath, filename_prefix)
@@ -61,6 +68,7 @@ async def refresh_schedule(request):
 """Start the bot."""
 # Register startup hook to initialize webhook
 dp.startup.register(on_startup)
+dp.shutdown.register(on_shutdown)
 
 # Create aiohttp.web.Application instance
 app = web.Application()
@@ -86,7 +94,7 @@ app.add_routes([web.get('/cities', refresh_schedule)])
 
 if __name__ == "__main__":
     # And finally start webserver
-    web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
+    web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT) # type: ignore
     # pass
 
     # in CLI: gunicorn qpbot10:app -b 127.0.0.1:8080 -k aiohttp.GunicornWebWorker

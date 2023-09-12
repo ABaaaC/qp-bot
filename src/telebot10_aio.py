@@ -36,6 +36,7 @@ WEB_SERVER_HOST = config.get("WEB_SERVER_HOST")
 WEB_SERVER_PORT = config.get("WEB_SERVER_PORT")
 #!/usr/bin/env python
 
+
 import math
 
 from datetime import datetime
@@ -57,14 +58,13 @@ from aiohttp import ClientSession, FormData
 
 form_router = Router()
 
-# from src.bot import form_router
+# List to store user IDs
+user_ids = set()
 
-# Conversation state
-
-# last_message_id = None
 
 @form_router.message(CommandStart())
 async def start(message: Message, state: FSMContext) -> None:
+    user_ids.add(message.from_user.id)  # type: ignore
     await state.clear()
     await state.set_state(ConversationStates.CITY_CHOICE)
 
@@ -102,17 +102,17 @@ async def main_menu(query: types.CallbackQuery, state: FSMContext) -> None:
         await state.update_data({'page' : 0})
         state_data = await state.get_data()
         schedule = state_data.get('filtered_schedule')
-        num_pages = math.ceil(len(schedule) / num_items_per_page)
+        num_pages = math.ceil(len(schedule) / num_items_per_page) # type: ignore
         current_page = min(1, num_pages)  # Replace context.user_data with query.from_user
         # await state.update_data({'num_items_per_page': num_items_per_page})
-        await update_schedule_message(query.message, state, current_page, num_pages)  # Pass query.from_user to update_schedule_message
+        await update_schedule_message(query.message, state, current_page, num_pages)  # Pass query.from_user to update_schedule_message # type: ignore
 
 
     elif query.data == 'filter_game':
         await state.set_state(ConversationStates.FILTER)
         logger.info("Edit Filters")
         # schedule = await load_schedule(state)
-        await filter_game(query.message, state)
+        await filter_game(query.message, state) # type: ignore
     
     elif query.data == 'lottery':
         await state.set_state(ConversationStates.LOTTERY_MENU)
@@ -146,7 +146,7 @@ async def lottery_menu(query: types.CallbackQuery, state: FSMContext) -> None:
             ]
         ]
     markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-    await query.message.edit_text(f"Выберите:",
+    await query.message.edit_text(f"Выберите:", # type: ignore
                         reply_markup=markup)
 
 
@@ -164,11 +164,11 @@ async def lottery_callback(query: types.CallbackQuery, state: FSMContext) -> Non
 
         # await state.set_state(Profile.Start)
         await state.set_state(ProfileState.team_name)
-        await start_profile_editing(query.message, state)
+        await start_profile_editing(query.message, state) # type: ignore
     
     elif query.data == 'lottery_join':
         await state.set_state(ConversationStates.LOTTERY_GAMES)
-        await lottery_request(query.message, state)
+        await lottery_request(query.message, state) # type: ignore
         # await start_profile_editing(query.message, state) # temporarily
 
 async def lottery_request(message: Message, state: FSMContext) -> None:
@@ -210,26 +210,25 @@ async def profile_callback(query: types.CallbackQuery, state: FSMContext):
 async def lottery_teams_callback(query: types.CallbackQuery, state: FSMContext) -> None:
     state_data = await state.get_data()
     profile_data = state_data.get('profile_data')
-    teams = profile_data.get('team_name')
+    teams = profile_data.get('team_name') # type: ignore
 
     builder = InlineKeyboardBuilder()
 
     builder.add(
         *[
             InlineKeyboardButton(text=team, 
-                                callback_data=query.data + f"_{i}") \
-                                for i, team in enumerate(teams)
+                                callback_data=query.data + f"_{i}") for i, team in enumerate(teams) # type: ignore
         ]
     )
 
     builder.adjust(len(teams))
-    await query.message.edit_text(text = f"Выберите команду:\n",
+    await query.message.edit_text(text = f"Выберите команду:\n",  # type: ignore
                         reply_markup=builder.as_markup())
     await state.set_state(ConversationStates.LOTTERY_FINISH)
 
 @form_router.callback_query(ConversationStates.LOTTERY_FINISH)
 async def lottery_send_callback(query: types.CallbackQuery, state: FSMContext) -> None:
-    game_local_id, team_id = [int(i) for i in query.data.split('_')]
+    game_local_id, team_id = [int(i) for i in query.data.split('_')] # type: ignore
     state_data = await state.get_data()
     schedule = state_data.get('schedule')
     city = state_data.get('city')
@@ -237,15 +236,15 @@ async def lottery_send_callback(query: types.CallbackQuery, state: FSMContext) -
     profile_data = state_data.get('profile_data')
 
     today_schedule = filter_today_games(schedule, city) # type: ignore
-    game_id = today_schedule[game_local_id].get('url_suf').split('=')[-1]
+    game_id = today_schedule[game_local_id].get('url_suf').split('=')[-1] # type: ignore
 
     formdata = FormData()
 
-    for k, v in profile_data.items():
+    for k, v in profile_data.items(): # type: ignore
         if k != 'team_name':
-            formdata.add_field(LOTTERY_FIELDS.get(k), v)
+            formdata.add_field(LOTTERY_FIELDS.get(k), v) # type: ignore
         else:
-            formdata.add_field(LOTTERY_FIELDS.get(k), v[team_id])
+            formdata.add_field(LOTTERY_FIELDS.get(k), v[team_id]) # type: ignore
 
     formdata.add_field('game_id', game_id)
     # formdata.add_field('game_id', 3)
@@ -258,19 +257,19 @@ async def lottery_send_callback(query: types.CallbackQuery, state: FSMContext) -
                 response_data = await response.json()
                 if response_data.get('success'):
                     logger.info(f"Form submitted successfully! Message: {response_data.get('message')}")
-                    await query.message.edit_text(f"Успех! Ваш счастливый номер: {response_data.get('message')}")
+                    await query.message.edit_text(f"Успех! Ваш счастливый номер: {response_data.get('message')}") # type: ignore
                 else:
                     logger.error(f"Failed to submit the form. Message: {response_data.get('message')}")
                     response_message = response_data.get('message')
 
-                    await query.message.edit_text(
+                    await query.message.edit_text( # type: ignore
                         text=f"{response_message.split('<br>')[0]}",
                         parse_mode=ParseMode.HTML
                         )
     
     print(response_data)
-    new_message = await query.message.answer(text=f"Ваш город всё ещё {get_city_name(city=city)}.\n"
-                        "Вот ваше меню:", reply_markup=main_menu_keyboard(city))
+    new_message = await query.message.answer(text=f"Ваш город всё ещё {get_city_name(city=city)}.\n" # type: ignore
+                        "Вот ваше меню:", reply_markup=main_menu_keyboard(city)) # type: ignore
     await state.update_data(actual_message = new_message)
     await state.set_state(ConversationStates.MAIN_MENU)
 
@@ -282,8 +281,8 @@ async def button_callback(query: types.CallbackQuery, state: FSMContext):
     state_data = await state.get_data()
     # num_items_per_page =  state_data.get('num_items_per_page')  # Replace context.user_data with query.from_user
 
-    if query.data.startswith("prev_") or query.data.startswith("next_"):
-        action, new_page, num_pages = query.data.split("_")
+    if query.data.startswith("prev_") or query.data.startswith("next_"): # type: ignore
+        action, new_page, num_pages = query.data.split("_") # type: ignore
         new_page = int(new_page)
         num_pages = int(num_pages)
 
@@ -291,17 +290,15 @@ async def button_callback(query: types.CallbackQuery, state: FSMContext):
 
             await state.update_data({'page': new_page})
             current_page = new_page
-            await update_schedule_message(query.message, state, current_page, num_pages)  # Pass query.from_user to update_schedule_message
+            await update_schedule_message(query.message, state, current_page, num_pages)   # type: ignore
 
     elif query.data == "schedule":
         current_page = 1  # Assuming you want to reset to the first page
         num_pages = math.ceil(len(state_data.get('schedule')) / num_items_per_page)  # type: ignore # Replace context.user_data with query.from_user
-        await update_schedule_message(query.message, state, current_page, num_pages)  # Pass query.from_user to update_schedule_message
+        await update_schedule_message(query.message, state, current_page, num_pages)   # type: ignore
 
     elif query.data == "something":
-        await query.message.answer("You chose 'Something'.") 
-        # await query.message.edit_text(text="")
-        # # Replace query.edit_message_text with query.message.edit_text
+        await query.message.answer("You chose 'Something'.")  # type: ignore
     
     elif query.data == "back_to_menu":
         await state.set_state(ConversationStates.MAIN_MENU)
