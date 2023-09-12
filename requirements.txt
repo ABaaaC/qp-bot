@@ -4,3 +4,4 @@ python-dotenv
 aiogram==3.0.0
 gunicorn==21.2.0
 phonenumbers==8.13.20
+pytz==2023.3
