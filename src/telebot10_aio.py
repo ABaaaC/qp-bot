@@ -86,7 +86,7 @@ async def city_choice(query: types.CallbackQuery, state: FSMContext) -> None:
     logger.info("Reading or Downloading Schedule")
 
     await main_menu_message(query, city)
-    _ = await load_schedule(state)
+    await load_schedule(state)
     
     await state.set_state(ConversationStates.MAIN_MENU)
     logger.info("city_choice DONE")
@@ -100,13 +100,13 @@ async def main_menu(query: types.CallbackQuery, state: FSMContext) -> None:
     if query.data == "schedule":
         await state.set_state(ConversationStates.PAGES)
         await state.update_data({'page' : 0})
+        await load_schedule(state)
         state_data = await state.get_data()
         schedule = state_data.get('filtered_schedule')
         num_pages = math.ceil(len(schedule) / num_items_per_page) # type: ignore
         current_page = min(1, num_pages)  # Replace context.user_data with query.from_user
         # await state.update_data({'num_items_per_page': num_items_per_page})
         await update_schedule_message(query.message, state, current_page, num_pages)  # Pass query.from_user to update_schedule_message # type: ignore
-
 
     elif query.data == 'filter_game':
         await state.set_state(ConversationStates.FILTER)

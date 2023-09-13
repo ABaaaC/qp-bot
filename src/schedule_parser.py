@@ -66,7 +66,7 @@ def extract_schedule(url):
             }
             game_info['type'] = classify_title(game_info['title'])
             if game_info['title'].lower().find("кино и музыка") != -1:
-                game_info['title'] = "КиМ"
+                game_info['title'] = "КиМ".join(game_info['title'].lower().split("кино и музыка"))
             schedule.append(game_info)
             if package_number is None:
                 print(game_info)

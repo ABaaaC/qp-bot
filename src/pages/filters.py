@@ -1,5 +1,5 @@
 from src.consts import GameType, ConversationStates, logger
-from src.pages.utils import get_filter_button_builder, main_menu_message 
+from src.pages.utils import get_filter_button_builder, main_menu_message, filter_apply
 # from src.bot import form_router
 
 from aiogram import types, Router 
@@ -9,20 +9,17 @@ from aiogram.types import Message
 
 filter_router = Router()
 
+
 @filter_router.callback_query(ConversationStates.FILTER)
 async def process_filters(query: types.CallbackQuery, state: FSMContext):
     logger.info("city_choice STARTED")
     state_data = await state.get_data()
 
     if query.data == 'save':
-        city = state_data.get('city')
-        schedule = state_data.get('schedule')
-        filter_game_flags = state_data.get('filter_game_flags')
-
         
-        filered_schedule = list(filter(lambda game: filter_game_flags.get(game.get('type')), schedule))
-        await state.update_data({'filtered_schedule': filered_schedule})
+        await filter_apply(state)
 
+        city = state_data.get('city')
         await main_menu_message(query, city)
     
         await state.set_state(ConversationStates.MAIN_MENU)

@@ -19,13 +19,13 @@ def is_file_expired(filepath: str, filename_prefix: str, expiration_hours: int):
     
     latest_file = max(files_in_directory)
     file_timestamp = datetime.strptime(latest_file.split('_')[-1].split('.')[0], '%Y%m%d%H%M%S')
-    expiration_time = datetime.now() - timedelta(hours=expiration_hours)
+    expiration_time = datetime.utcnow() - timedelta(hours=expiration_hours)
     
     return file_timestamp < expiration_time
 
 def get_current_timestamp():
     """Get the current timestamp as a formatted string."""
-    return datetime.now().strftime('%Y%m%d%H%M%S')
+    return datetime.utcnow().strftime('%Y%m%d%H%M%S')
 
 def is_schedule_expired(uploaded_timestamp: str, city: str):
     filepath = os.path.join(base_filepath, city)

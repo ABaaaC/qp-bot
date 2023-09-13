@@ -16,7 +16,6 @@ from src.schedule_loader import read_or_download_schedule, is_schedule_expired
 from datetime import datetime
 import pytz
 from pytz import timezone
-from time import time, mktime
 
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
@@ -70,9 +69,18 @@ def main_menu_keyboard(city: str) -> InlineKeyboardMarkup:
     ]
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
+async def filter_apply(state: FSMContext) -> None:
+    state_data = await state.get_data()
+    schedule = state_data.get('schedule')
+    filter_game_flags = state_data.get('filter_game_flags')
+    
+    filtered_schedule = list(filter(lambda game: filter_game_flags.get(game.get('type')), schedule))
+    await state.update_data({'filtered_schedule': filtered_schedule})
+
 async def load_schedule(state: FSMContext):
     expiration_hours = 24
     state_data = await state.get_data()
+    now = datetime.utcnow().strftime('%Y%m%d%H%M%S')
     if 'schedule' not in state_data.keys() or state_data['schedule'] is None \
             or is_schedule_expired(state_data.get('schedule_timestamp'), state_data.get('city')): # type: ignore
         schedule, timestamp = read_or_download_schedule(state_data.get('url') + "/schedule", expiration_hours=expiration_hours) # type: ignore
@@ -81,10 +89,11 @@ async def load_schedule(state: FSMContext):
 
         await state.update_data({'schedule': schedule, 'schedule_timestamp': timestamp})
     
-    if 'filtered_schedule' not in state_data.keys() or state_data['filtered_schedule'] is None:
-        await state.update_data({'filtered_schedule': schedule})
-        return schedule # type: ignore
-    return state_data['filtered_schedule']
+        await filter_apply(state)
+    # if 'filtered_schedule' not in state_data.keys() or state_data['filtered_schedule'] is None:
+    #     await state.update_data({'filtered_schedule': schedule})
+    #     return schedule # type: ignore
+    # return state_data['filtered_schedule']
 
 def get_schedule_text(schedule, start_index, end_index):
     game_titles = []
