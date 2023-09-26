@@ -79,8 +79,18 @@ async def start(message: Message, state: FSMContext) -> None:
 @form_router.callback_query(ConversationStates.CITY_CHOICE)
 async def city_choice(query: types.CallbackQuery, state: FSMContext) -> None:
     logger.info("city_choice STARTED")
-    await state.set_data({'city': query.data, 'filter_game_flags': DEFAULT_FILTER})
+    user_id = query.message.from_user.id
+    # await state.set_data({'city': query.data, 'filter_game_flags': DEFAULT_FILTER})
+    await state.update_data(city = query.data)
+    await state.update_data(filter_game_flags = DEFAULT_FILTER.copy())
     await state.update_data(actual_message = query.message)
+
+    state_data = await state.get_data()
+    logger.info(f"User_ID: {user_id}\n{state_data}")
+
+    # await state.update_data(user_id = {'city': query.data, 
+    #                             'filter_game_flags': DEFAULT_FILTER,
+    #                             'actual_message': query.message})
     city = query.data
     await state.update_data({'url': f'https://{city}.{QP_URL}'})
     logger.info("Reading or Downloading Schedule")
@@ -247,6 +257,7 @@ async def lottery_send_callback(query: types.CallbackQuery, state: FSMContext) -
             formdata.add_field(LOTTERY_FIELDS.get(k), v[team_id]) # type: ignore
 
     formdata.add_field('game_id', game_id)
+    logger.info(f"Lottery DATA:\n{profile_data}")
     # formdata.add_field('game_id', 3)
 
     url = LOTTERY_URL

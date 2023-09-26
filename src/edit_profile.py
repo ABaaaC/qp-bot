@@ -75,11 +75,11 @@ async def answer_name(message: Message, state: FSMContext):
 
 @form_router.message(ProfileState.email)
 async def answer_email(message: Message, state: FSMContext):
-
     email_str = message.text
     pattern = re.compile(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)")
     valid_flag = bool(pattern.match(email_str)) # type: ignore
 
+    valid_flag = True
     if valid_flag:
         state_data = await state.get_data()
         profile_data = state_data.get('profile_data')
@@ -106,7 +106,8 @@ async def answer_phone(message: Message, state: FSMContext):
         valid_flag = phonenumbers.is_valid_number(phone_number)
     except phonenumbers.NumberParseException:
         valid_flag = False
-
+    
+    
     if valid_flag:
 
         phone = phonenumbers.format_number(phone_number, phonenumbers.PhoneNumberFormat.E164) # type: ignore
@@ -133,6 +134,9 @@ async def answer_date_of_birth_year(message: Message, state: FSMContext):
     current_year = datetime.now().year
 
     valid_flag = message.text.isdigit() and (1900 < int(message.text) < current_year)  # type: ignore
+    
+    
+    # valid_flag = True
     if valid_flag:
         state_data = await state.get_data()
         profile_data = state_data.get('profile_data')
@@ -142,6 +146,7 @@ async def answer_date_of_birth_year(message: Message, state: FSMContext):
         message = await return_actual_message(message, state)
 
         await state.set_state(ProfileState.date_of_birth_month)
+
         await message.edit_text("Номер месяца рождения:")
     else:
         message = await return_actual_message(message, state)
@@ -152,6 +157,8 @@ async def answer_date_of_birth_month(message: Message, state: FSMContext):
     # await state.update_data(date_of_birth_month=message.text)
 
     valid_flag = message.text.isdigit() and (1 <= int(message.text) <= 12) # type: ignore
+    
+    # valid_flag = True
 
     if valid_flag:
         state_data = await state.get_data()
@@ -179,6 +186,8 @@ async def answer_date_of_birth_day(message: Message, state: FSMContext):
     _, days_in_month = calendar.monthrange(int(year), int(month))
 
     valid_flag = message.text.isdigit() and (1 <= int(message.text) <= days_in_month) # type: ignore
+
+    # valid_flag = True
 
     if valid_flag:
         profile_data.update(date_of_birth_day=message.text) # type: ignore
