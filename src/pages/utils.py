@@ -111,7 +111,7 @@ def get_schedule_text(schedule, start_index, end_index):
 
         game_titles.append(game_name + ' - ' + game_loc)
                    
-    schedule_text = "\n".join(game_titles)
+    schedule_text = "\n\n".join(game_titles)
     return schedule_text
 
 async def update_schedule_message(message: Message, state: FSMContext, current_page: int, num_pages: int) -> None:
@@ -149,7 +149,7 @@ async def update_schedule_message(message: Message, state: FSMContext, current_p
     builder.add(InlineKeyboardButton(text = "🔙 Назад", callback_data="back_to_menu"))
 
     # message_text = f"Here is the schedule for your chosen city (Page {current_page}/{num_pages}):\n{schedule_text}"
-    message_text = f"КвизПлиз{get_city_name(city).capitalize()} предлагает следующие игры, [{current_page}/{num_pages}]: \n{schedule_text}"
+    message_text = f"КвизПлиз{get_city_name(city).capitalize()} предлагает следующие игры, [{current_page}/{num_pages}]: \n\n{schedule_text}"
     
     builder.adjust(end_index-start_index, 2, 1)
     
