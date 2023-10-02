@@ -79,7 +79,7 @@ async def answer_email(message: Message, state: FSMContext):
     pattern = re.compile(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)")
     valid_flag = bool(pattern.match(email_str)) # type: ignore
 
-    valid_flag = True
+    # valid_flag = True
     if valid_flag:
         state_data = await state.get_data()
         profile_data = state_data.get('profile_data')

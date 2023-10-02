@@ -58,6 +58,7 @@ def main_menu_keyboard(city: str) -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text = "Расписание", callback_data="schedule"),
                 InlineKeyboardButton(text = "Фильтры", callback_data='filter_game'),
                 InlineKeyboardButton(text = "Лототрон", callback_data='lottery'),
+                # InlineKeyboardButton(text = "TEST", callback_data='test'),
             ]
         ]
     else:

@@ -1,0 +1,184 @@
+.lototron .container {
+  padding: 40px 0;
+}
+
+.lototron__form__row {
+  display: flex;
+  width: 100%;
+  position: relative;
+}
+
+.lototron__form__cell {
+  width: 100%;
+  padding: 10px;
+}
+
+.lototron__form__text {
+  color: rgba(0, 0, 0, .8);
+  font-weight: bold;
+  padding: 0 10px;
+}
+
+.lototron__agreement {
+  margin-top: 15px;
+  padding: 0 10px;
+}
+
+.lototron__label {
+  color: black;
+  padding-bottom: 10px;
+  font-weight: 600;
+}
+
+.lototron__form__cell input, .lototron__form__cell select {
+  color: black;
+  height: 50px;
+  margin-bottom: 0px;
+  padding: 15px;
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(0, 0, 0, .1);
+  border-radius: 5px;
+  -webkit-transition: all 100ms ease;
+  transition: all 100ms ease;
+  font-family: Raleway, sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  width: 100%;
+}
+
+.lototron__form__cell .select-wrapper {
+  position: relative;
+}
+
+.lototron__form__cell .select-wrapper::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  background-image: url('/img/dropdown.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.lototron__form__cell select option {
+  color: black;
+}
+
+.lototron__button {
+  margin-right: 20px;
+  margin-left: 10px;
+  margin-top: 15px;
+  border-radius: 2px;
+  background-color: #fc1aa3;
+  box-shadow: 0 4px 0 0 #a51356;
+  -webkit-transition: all 200ms ease;
+  transition: all 200ms ease;
+  color: #fff;
+  padding: 10px 20px;
+  font-weight: 900;
+  font-family: Akrobat, sans-serif;
+  font-size: 20px;
+  line-height: 30px;
+  text-transform: uppercase;
+  border: none;
+}
+
+.lototron__button:disabled {
+  opacity: .7;
+  cursor: not-allowed;
+}
+
+.lototron__strong {
+  font-weight: bold;
+}
+
+.lototron__success {
+  padding: 30px 65px;
+  padding-bottom: 0;
+  font-size: 20px;
+  line-height: 27px;
+  text-align: center;
+}
+
+.lototron-input {
+  color: black;
+}
+
+.lototron {
+  font-family: Raleway, sans-serif;
+  font-style: normal;
+  background: white;
+}
+
+.lototron__title {
+  font-weight: 900;
+  font-size: 23px;
+  line-height: 35px;
+}
+
+.lototron__subtitle {
+  font-weight: 900;
+  font-size: 20px;
+  line-height: 24px;
+  text-transform: uppercase;
+  padding-bottom: 19px;
+}
+
+.lototron__pink {
+  color: #FC1AA3;
+}
+
+.lototron__text {
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 20px;
+  padding-bottom: 39px;
+}
+
+.lototron__chuck {
+  max-width: 316px;
+  margin-bottom: -7px;
+}
+
+#lototron>.mfp-close{
+  color: transparent!important;
+}
+
+@media (min-width: 769px) {
+  .lototron__success {
+    width: 585px;
+    padding: 30px 0;
+    padding-bottom: 0;
+  }
+}
+@media (max-width: 768px) {
+  .lototron__text {
+    display: none;
+  }
+
+  .lototron__subtitle .lototron__pink {
+    display: block;
+    font-size: 130px;
+    line-height: 145px;
+  }
+
+  .lototron__chuck {
+    max-width: 277px;
+  }
+}
+@media (max-width: 575px) {
+  .lototron__form__row {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 425px) {
+  .lototron__success {
+    padding: 15px 30px;
+    padding-bottom: 0;
+  }
+}

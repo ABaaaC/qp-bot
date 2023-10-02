@@ -8,4 +8,6 @@ schedules/
 *.pdf
 .vscode/
 .DS_Store
-*.json
+schedule*.json
+screenshots/
+lott*.png

@@ -8,8 +8,8 @@ from src.consts import (
     CITY_TO_TZ,
     LOTTERY_FIELDS,
     LOTTERY_URL
-
 )
+
 from src.pages.utils import (
     main_menu_message,
     main_menu_keyboard,
@@ -21,7 +21,7 @@ from src.pages.filters import filter_game
 
 from src.edit_profile import ProfileState, enter_test as start_profile_editing
 
-# from src.pages.filters import filter_game
+import os, json
 
 from dotenv import dotenv_values
 config = dotenv_values(".env")
@@ -39,11 +39,8 @@ WEB_SERVER_PORT = config.get("WEB_SERVER_PORT")
 
 import math
 
-from datetime import datetime
-from pytz import timezone
-
 from aiogram.enums import ParseMode
-from aiogram import Bot, Dispatcher, types, Router #,F
+from aiogram import types, Router #,F
 from aiogram.filters import CommandStart
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -53,6 +50,7 @@ from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
 )
+from aiogram.types.input_file import FSInputFile
 
 from aiohttp import ClientSession, FormData
 
@@ -67,6 +65,16 @@ async def start(message: Message, state: FSMContext) -> None:
     user_ids.add(message.from_user.id)  # type: ignore
     await state.clear()
     await state.set_state(ConversationStates.CITY_CHOICE)
+
+    # # generate file_id's
+    # file_id_dict = {}
+    # for i in range(1, 4):
+    #     screenshot_path = os.getcwd() + '/' + f"screenshots/lottery_number_{i}.png"
+    #     photo = FSInputFile(path=screenshot_path)
+    #     sent_message = await message.answer_photo(photo=photo)
+    #     file_id = sent_message.photo[-1].file_id
+    #     file_id_dict[i] = file_id
+    #     await sent_message.delete()
 
     logger.info("Start is really calling")
     city = "moscow"
@@ -261,6 +269,14 @@ async def lottery_send_callback(query: types.CallbackQuery, state: FSMContext) -
     # formdata.add_field('game_id', 3)
 
     url = LOTTERY_URL
+    message = query.message
+
+    # with open("file_id_dict.json", "r") as outfile:
+    #     file_id_dict = json.load(outfile)
+    # sent_message = await message.answer_photo(photo=file_id_dict["69"])
+    # await message.delete()
+    # message = sent_message
+
 
     async with ClientSession() as session:
     
@@ -268,17 +284,24 @@ async def lottery_send_callback(query: types.CallbackQuery, state: FSMContext) -
                 response_data = await response.json()
                 if response_data.get('success'):
                     logger.info(f"Form submitted successfully! Message: {response_data.get('message')}")
-                    await query.message.edit_text(f"Успех! Ваш счастливый номер: {response_data.get('message')}") # type: ignore
+                    lottery_id = response_data.get('message')
+                    if int(lottery_id) <= 400:
+                        with open("file_id_dict.json", "r") as outfile:
+                            file_id_dict = json.load(outfile)
+                        sent_message = await message.answer_photo(photo=file_id_dict[response_data.get('message')])
+                        await message.delete()
+                        message = sent_message
+                    else:
+                        await message.edit_text(f"Успех! Ваш счастливый номер: {response_data.get('message')}") # type: ignore
                 else:
                     logger.error(f"Failed to submit the form. Message: {response_data.get('message')}")
                     response_message = response_data.get('message')
 
-                    await query.message.edit_text( # type: ignore
+                    await message.edit_text( # type: ignore
                         text=f"{response_message.split('<br>')[0]}",
                         parse_mode=ParseMode.HTML
                         )
     
-    print(response_data)
     new_message = await query.message.answer(text=f"Ваш город всё ещё {get_city_name(city=city)}.\n" # type: ignore
                         "Вот ваше меню:", reply_markup=main_menu_keyboard(city)) # type: ignore
     await state.update_data(actual_message = new_message)
