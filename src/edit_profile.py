@@ -147,6 +147,7 @@ async def answer_date_of_birth_year(message: Message, state: FSMContext):
 
         await state.set_state(ProfileState.date_of_birth_month)
 
+
         await message.edit_text("Номер месяца рождения:")
     else:
         message = await return_actual_message(message, state)
