@@ -20,11 +20,12 @@ from aiohttp import web
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from src.bot import bot, dp
 
-from src.telebot10_aio import user_ids
+from src.telebot10_aio import loto_profiles, user_ids
 
 from src.schedule_loader import download_schedule
 
-# Define the number of items per page
+from src.gdrive import load_test
+
 
 # Enable logging
 fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -36,7 +37,14 @@ logger = logging.getLogger(__name__)
 async def on_startup(bot: Bot) -> None:
     # If you have a self-signed SSL certificate, then you will need to send a public
     # certificate to Telegram
+
+    # global loto_profiles
+    loto_profiles.update(load_test())
+
+    logger.info(f"loto_profiles:\t{loto_profiles}")
+
     await bot.set_webhook(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}/{BOT_TOKEN}")
+    
 
 async def on_shutdown(bot: Bot) -> None:
     # Send a message to all users when the bot shuts down
@@ -94,6 +102,7 @@ app.add_routes([web.get('/cities', refresh_schedule)])
 
 if __name__ == "__main__":
     # And finally start webserver
+    
     web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT) # type: ignore
     # pass
 

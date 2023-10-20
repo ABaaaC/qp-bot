@@ -20,6 +20,8 @@ import calendar
 # from src.telebot10_aio import form_router, BOT_TOKEN
 form_router = Router()
 
+loto_profiles = {}
+
 class ProfileState(StatesGroup):
     Start = State()
     team_name = State()
@@ -185,6 +187,7 @@ async def answer_date_of_birth_day(message: Message, state: FSMContext):
     year = profile_data.get('date_of_birth_year') # type: ignore
     month = profile_data.get('date_of_birth_month') # type: ignore
     _, days_in_month = calendar.monthrange(int(year), int(month))
+
 
     valid_flag = message.text.isdigit() and (1 <= int(message.text) <= days_in_month) # type: ignore
 

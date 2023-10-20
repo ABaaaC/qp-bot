@@ -9,5 +9,9 @@ schedules/
 .vscode/
 .DS_Store
 schedule*.json
+qp-bot*.json
+*test*.json
 screenshots/
 lott*.png
+
+qpbot10_aio_gdrive.py

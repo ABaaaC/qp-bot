@@ -19,7 +19,7 @@ from src.pages.utils import (
 ) 
 from src.pages.filters import filter_game
 
-from src.edit_profile import ProfileState, enter_test as start_profile_editing
+from src.edit_profile import ProfileState, enter_test as start_profile_editing, loto_profiles
 
 import os, json
 
@@ -60,11 +60,20 @@ form_router = Router()
 user_ids = set()
 
 
+
 @form_router.message(CommandStart())
 async def start(message: Message, state: FSMContext) -> None:
-    user_ids.add(message.from_user.id)  # type: ignore
+    # global loto_profiles
+    user_id = message.from_user.id
+    user_ids.add(user_id)  # type: ignore
+    logger.info(f"ID:\t{user_id}")
+    logger.info(f"loto_profiles:\t{loto_profiles}")
+
     await state.clear()
+    if str(user_id) in loto_profiles:
+        await state.update_data(profile_data=loto_profiles.get(str(user_id)))
     await state.set_state(ConversationStates.CITY_CHOICE)
+    
 
     # # generate file_id's
     # file_id_dict = {}
