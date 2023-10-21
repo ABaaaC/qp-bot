@@ -10,6 +10,7 @@ schedules/
 .DS_Store
 schedule*.json
 qp-bot*.json
+tmp.json
 *test*.json
 screenshots/
 lott*.png

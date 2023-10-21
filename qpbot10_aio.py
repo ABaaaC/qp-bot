@@ -20,7 +20,10 @@ from aiohttp import web
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from src.bot import bot, dp
 
-from src.telebot10_aio import loto_profiles, user_ids
+# from src.telebot10_aio import loto_profiles, user_ids
+from src.telebot10_aio import user_ids
+from src.consts import loto_profiles
+
 
 from src.schedule_loader import download_schedule
 

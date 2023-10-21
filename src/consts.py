@@ -18,6 +18,29 @@ class ConversationStates(StatesGroup):
     LOTTERY_TEAMS = State()
     LOTTERY_FINISH = State()
 
+class ProfileState(StatesGroup):
+    # Start = State()
+    team_name = State()
+    name = State()
+    email = State()
+    phone = State()
+    date_of_birth_day = State()
+    date_of_birth_month = State()
+    date_of_birth_year = State()
+    gender = State()
+    show_profile = State()
+
+class ProfileEdit(StatesGroup):
+    Start = State()
+    team_name = State()
+    name = State()
+    email = State()
+    phone = State()
+    date_of_birth_day = State()
+    date_of_birth_month = State()
+    date_of_birth_year = State()
+    gender = State()
+
 LOTTERY_FIELDS = {
     'team_name': 'LotteryPlayer[team_name]',
     'name': 'LotteryPlayer[name]',
@@ -30,6 +53,9 @@ LOTTERY_FIELDS = {
 }
 
 LOTTERY_URL = "https://quizplease.ru/ajax/send-lottery-player-form"
+
+loto_profiles = {}
+
 
 # By Default we choose all filters
 DEFAULT_FILTER = dict([(i, True) for i in GameType])

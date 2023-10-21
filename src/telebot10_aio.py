@@ -1,13 +1,15 @@
 
 from src.consts import (
     ConversationStates,
+    ProfileState,
     DEFAULT_FILTER,
     get_city_name,
     num_items_per_page,
     logger,
     CITY_TO_TZ,
     LOTTERY_FIELDS,
-    LOTTERY_URL
+    LOTTERY_URL,
+    loto_profiles
 )
 
 from src.pages.utils import (
@@ -19,7 +21,13 @@ from src.pages.utils import (
 ) 
 from src.pages.filters import filter_game
 
-from src.edit_profile import ProfileState, enter_test as start_profile_editing, loto_profiles
+from src.edit_profile import (
+    enter_test as start_profile_editing, 
+    # loto_profiles, 
+    lottery_request, 
+    lottery_menu, 
+    show_profile
+)
 
 import os, json
 
@@ -64,14 +72,15 @@ user_ids = set()
 @form_router.message(CommandStart())
 async def start(message: Message, state: FSMContext) -> None:
     # global loto_profiles
-    user_id = message.from_user.id
+    user_id = str(message.from_user.id)
     user_ids.add(user_id)  # type: ignore
-    logger.info(f"ID:\t{user_id}")
-    logger.info(f"loto_profiles:\t{loto_profiles}")
+    # logger.info(f"ID:\t{user_id}")
+    # logger.info(f"loto_profiles:\t{loto_profiles}")
 
     await state.clear()
-    if str(user_id) in loto_profiles:
-        await state.update_data(profile_data=loto_profiles.get(str(user_id)))
+    if user_id in loto_profiles:
+        profile_data=loto_profiles.get(user_id).copy()
+        await state.update_data(profile_data=profile_data)
     await state.set_state(ConversationStates.CITY_CHOICE)
     
 
@@ -98,14 +107,14 @@ async def start(message: Message, state: FSMContext) -> None:
 @form_router.callback_query(ConversationStates.CITY_CHOICE)
 async def city_choice(query: types.CallbackQuery, state: FSMContext) -> None:
     logger.info("city_choice STARTED")
-    user_id = query.message.from_user.id
+    # user_id = query.message.from_user.id
     # await state.set_data({'city': query.data, 'filter_game_flags': DEFAULT_FILTER})
     await state.update_data(city = query.data)
     await state.update_data(filter_game_flags = DEFAULT_FILTER.copy())
     await state.update_data(actual_message = query.message)
 
     state_data = await state.get_data()
-    logger.info(f"User_ID: {user_id}\n{state_data}")
+    # logger.info(f"User_ID: {user_id}\n{state_data}")
 
     # await state.update_data(user_id = {'city': query.data, 
     #                             'filter_game_flags': DEFAULT_FILTER,
@@ -151,34 +160,6 @@ async def main_menu(query: types.CallbackQuery, state: FSMContext) -> None:
     logger.info("main_menu DONE")
 
 
-
-async def lottery_menu(query: types.CallbackQuery, state: FSMContext) -> None:
-    state_data = await state.get_data()
-    profile_data = state_data.get('profile_data')
-
-    if  profile_data is not None:
-    # if  True:
-        keyboard = [
-            [
-                InlineKeyboardButton(text = "Профиль ✏️", callback_data="profile"),
-                InlineKeyboardButton(text = "🔙 Назад", callback_data="back_to_menu"),
-            ],
-            [
-                InlineKeyboardButton(text = "Участвовать", callback_data='lottery_join'),
-            ]
-        ]
-    else:
-        keyboard = [
-            [
-                InlineKeyboardButton(text = "Профиль ✏️", callback_data="profile"),
-                InlineKeyboardButton(text = "🔙 Назад", callback_data="back_to_menu"),
-            ]
-        ]
-    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-    await query.message.edit_text(f"Выберите:", # type: ignore
-                        reply_markup=markup)
-
-
 @form_router.callback_query(ConversationStates.LOTTERY_MENU)
 async def lottery_callback(query: types.CallbackQuery, state: FSMContext) -> None:
     state_data = await state.get_data()
@@ -194,46 +175,18 @@ async def lottery_callback(query: types.CallbackQuery, state: FSMContext) -> Non
         # await state.set_state(Profile.Start)
         await state.set_state(ProfileState.team_name)
         await start_profile_editing(query.message, state) # type: ignore
+
+    elif query.data == 'show_profile':
+
+        # await state.set_state(Profile.Start)
+        await state.set_state(ProfileState.show_profile)
+        await show_profile(query.message, state) # type: ignore
     
     elif query.data == 'lottery_join':
         await state.set_state(ConversationStates.LOTTERY_GAMES)
         await lottery_request(query.message, state) # type: ignore
         # await start_profile_editing(query.message, state) # temporarily
 
-async def lottery_request(message: Message, state: FSMContext) -> None:
-    state_data = await state.get_data()
-    profile_data = state_data.get('profile_data')
-    schedule = state_data.get('schedule')
-    city = state_data.get('city')
-    today_schedule = filter_today_games(schedule, city) # type: ignore
-
-    # logger.info(today_schedule)
-
-    builder = InlineKeyboardBuilder()
-
-    game_texts = "\n".join([f"{i+1}. {item.get('title')}, #{item.get('package_number')}, {item.get('place')}, {item.get('datetime')}"  
-                            for i, item in enumerate(today_schedule)])
-    builder.add(
-        *[
-            # InlineKeyboardButton(text=f"{i+1}", callback_data=f"enter_lottery_{i+1}") \
-            InlineKeyboardButton(text=f"{i+1}", callback_data=f"{i}") \
-                                for i in range(len(today_schedule))
-        ]
-    )
-
-    builder.adjust(len(today_schedule))
-    await message.edit_text(text = f"Выберите игру для лотереи:\n"+game_texts,
-                        reply_markup=builder.as_markup())
-
-@form_router.callback_query(ProfileState.Finish)
-async def profile_callback(query: types.CallbackQuery, state: FSMContext):
-    state_data = await state.get_data()
-
-    if query.data == 'save':
-
-        await state.set_state(ConversationStates.LOTTERY_MENU)
-        logger.info("back to LOTTERY!")
-        await lottery_menu(query, state)
 
 @form_router.callback_query(ConversationStates.LOTTERY_GAMES)
 async def lottery_teams_callback(query: types.CallbackQuery, state: FSMContext) -> None:

@@ -1,4 +1,5 @@
-from aiogram import Router
+from venv import logger
+from aiogram import Router, types
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.enums import ParseMode
 
@@ -11,6 +12,17 @@ from aiogram.types import (
     CallbackQuery,
 )
 
+from src.gdrive import change_profile_on_gdrive
+
+from src.consts import (
+    ProfileEdit,
+    ProfileState,
+    ConversationStates,
+    loto_profiles
+)
+
+from src.pages.utils import filter_today_games
+
 import phonenumbers
 import re
 from datetime import datetime
@@ -20,19 +32,8 @@ import calendar
 # from src.telebot10_aio import form_router, BOT_TOKEN
 form_router = Router()
 
-loto_profiles = {}
 
-class ProfileState(StatesGroup):
-    Start = State()
-    team_name = State()
-    name = State()
-    email = State()
-    phone = State()
-    date_of_birth_day = State()
-    date_of_birth_month = State()
-    date_of_birth_year = State()
-    gender = State()
-    Finish = State()
+
 
 async def return_actual_message(message: Message, state: FSMContext):
     await message.delete()
@@ -44,11 +45,16 @@ async def return_actual_message(message: Message, state: FSMContext):
 # @form_router.message(lambda message: message.text == 'Edit Profile')
 async def enter_test(message: Message, state: FSMContext):
     # await ProfileState.team_name.set()
-    await state.set_state(ProfileState.team_name)
     await message.edit_text("Ваша команда (можно несколько в разных строках):")
+    current_state = await state.get_state()
+    if current_state != ProfileEdit.team_name: 
+        await state.set_state(ProfileState.team_name)
 
+@form_router.message(ProfileEdit.team_name)
 @form_router.message(ProfileState.team_name)
 async def answer_team_name(message: Message, state: FSMContext):
+
+    current_state = await state.get_state()
 
     state_data = await state.get_data()
     profile_data = state_data.get('profile_data', dict()) if state_data.get('profile_data') is not None else dict()
@@ -58,25 +64,39 @@ async def answer_team_name(message: Message, state: FSMContext):
 
     message = await return_actual_message(message, state)
 
-    await state.set_state(ProfileState.name)
-    await message.edit_text("Введите имя:")
+    if current_state == ProfileEdit.team_name: 
+        await state.set_state(ProfileState.show_profile)
+        await show_profile(message, state)
+    elif current_state == ProfileState.team_name: 
+        await state.set_state(ProfileState.name)
+        await message.edit_text("Введите имя:")
 
 @form_router.message(ProfileState.name)
+@form_router.message(ProfileEdit.name)
 async def answer_name(message: Message, state: FSMContext):
+
+    current_state = await state.get_state()
+
     state_data = await state.get_data()
     profile_data = state_data.get('profile_data')
     profile_data.update(name=message.text) # type: ignore
     await state.update_data(profile_data=profile_data)
 
-    # await state.update_data(name=message.text)
-
     message = await return_actual_message(message, state)
 
-    await state.set_state(ProfileState.email)
-    await message.edit_text("Ваш e-mail:")
+    if current_state == ProfileEdit.name: 
+        await state.set_state(ProfileState.show_profile)
+        await show_profile(message, state)
+    elif current_state == ProfileState.name: 
+        await state.set_state(ProfileState.email)
+        await message.edit_text("Ваш e-mail:")
 
 @form_router.message(ProfileState.email)
+@form_router.message(ProfileEdit.email)
 async def answer_email(message: Message, state: FSMContext):
+
+    current_state = await state.get_state()
+
     email_str = message.text
     pattern = re.compile(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)")
     valid_flag = bool(pattern.match(email_str)) # type: ignore
@@ -91,24 +111,31 @@ async def answer_email(message: Message, state: FSMContext):
         # await state.update_data(email=message.text)
 
         message = await return_actual_message(message, state)
-    
-        await state.set_state(ProfileState.phone)
-        await message.edit_text("Номер телефона:")
+
+        if ProfileEdit.email == current_state: 
+            await state.set_state(ProfileState.show_profile)
+            await show_profile(message, state)
+        elif ProfileState.email == current_state: 
+            await state.set_state(ProfileState.phone)
+            await message.edit_text("Номер телефона:")
 
     else:
 
         message = await return_actual_message(message, state)
         await message.edit_text("Введите настоящий email:")
-
+    
 @form_router.message(ProfileState.phone)
+@form_router.message(ProfileEdit.phone)
 async def answer_phone(message: Message, state: FSMContext):
+
+    current_state = await state.get_state()
+
     phone_number_str = message.text
     try:
         phone_number = phonenumbers.parse(phone_number_str) # type: ignore
         valid_flag = phonenumbers.is_valid_number(phone_number)
     except phonenumbers.NumberParseException:
         valid_flag = False
-    
     
     if valid_flag:
 
@@ -123,16 +150,24 @@ async def answer_phone(message: Message, state: FSMContext):
 
         message = await return_actual_message(message, state)
 
-        await state.set_state(ProfileState.date_of_birth_year)
-        await message.edit_text("Введите год вашего рождения:")
+        if current_state == ProfileEdit.phone: 
+            await state.set_state(ProfileState.show_profile)
+            await show_profile(message, state)
+        elif current_state == ProfileState.phone: 
+
+            await state.set_state(ProfileState.date_of_birth_year)
+            await message.edit_text("Введите год вашего рождения:")
 
     else:
         message = await return_actual_message(message, state)
         await message.edit_text("Введите существующий номер телефона:")
 
 @form_router.message(ProfileState.date_of_birth_year)
+@form_router.message(ProfileEdit.date_of_birth_year)
 async def answer_date_of_birth_year(message: Message, state: FSMContext):
     # await state.update_data(date_of_birth_year=message.text)
+    current_state = await state.get_state()
+
     current_year = datetime.now().year
 
     valid_flag = message.text.isdigit() and (1900 < int(message.text) < current_year)  # type: ignore
@@ -147,8 +182,10 @@ async def answer_date_of_birth_year(message: Message, state: FSMContext):
 
         message = await return_actual_message(message, state)
 
-        await state.set_state(ProfileState.date_of_birth_month)
-
+        if current_state == ProfileEdit.date_of_birth_year: 
+            await state.set_state(ProfileEdit.date_of_birth_month)
+        if current_state == ProfileState.date_of_birth_year: 
+            await state.set_state(ProfileState.date_of_birth_month)
 
         await message.edit_text("Номер месяца рождения:")
     else:
@@ -156,8 +193,10 @@ async def answer_date_of_birth_year(message: Message, state: FSMContext):
         await message.edit_text("Введите корректный год рождения")
 
 @form_router.message(ProfileState.date_of_birth_month)
+@form_router.message(ProfileEdit.date_of_birth_month)
 async def answer_date_of_birth_month(message: Message, state: FSMContext):
     # await state.update_data(date_of_birth_month=message.text)
+    current_state = await state.get_state()
 
     valid_flag = message.text.isdigit() and (1 <= int(message.text) <= 12) # type: ignore
     
@@ -171,7 +210,11 @@ async def answer_date_of_birth_month(message: Message, state: FSMContext):
 
         message = await return_actual_message(message, state)
 
-        await state.set_state(ProfileState.date_of_birth_day)
+        if current_state == ProfileEdit.date_of_birth_month: 
+            await state.set_state(ProfileEdit.date_of_birth_day)
+        if current_state == ProfileState.date_of_birth_month: 
+            await state.set_state(ProfileState.date_of_birth_day)
+
         await message.edit_text("День рождения:")
     else:
 
@@ -179,8 +222,11 @@ async def answer_date_of_birth_month(message: Message, state: FSMContext):
         await message.edit_text("Введите корректный номер месяца")
 
 @form_router.message(ProfileState.date_of_birth_day)
+@form_router.message(ProfileEdit.date_of_birth_day)
 async def answer_date_of_birth_day(message: Message, state: FSMContext):
     # await state.update_data(date_of_birth_day=message.text)
+    current_state = await state.get_state()
+
     state_data = await state.get_data()
     profile_data = state_data.get('profile_data')
 
@@ -199,18 +245,22 @@ async def answer_date_of_birth_day(message: Message, state: FSMContext):
 
         message = await return_actual_message(message, state)
 
-        await state.set_state(ProfileState.gender)
-        await message.edit_text("Выберите ваш пол:")
+        if current_state == ProfileEdit.date_of_birth_day: 
+            await state.set_state(ProfileState.show_profile)
+            await show_profile(message, state)
+        elif current_state == ProfileState.date_of_birth_day: 
+            await state.set_state(ProfileState.gender)
+            await message.edit_text("Выберите ваш пол:")
 
-        await message.edit_reply_markup(
-                text = "Выберите ваш пол:",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                    [
-                        InlineKeyboardButton(text='М', callback_data='0'),
-                        InlineKeyboardButton(text='Ж', callback_data='1')
-                    ]
-                ])
-            )
+            await message.edit_reply_markup(
+                    text = "Выберите ваш пол:",
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                        [
+                            InlineKeyboardButton(text='М', callback_data='0'),
+                            InlineKeyboardButton(text='Ж', callback_data='1')
+                        ]
+                    ])
+                )
 
 
     else:
@@ -220,6 +270,7 @@ async def answer_date_of_birth_day(message: Message, state: FSMContext):
 
 # @form_router.message(ProfileState.gender)
 @form_router.callback_query(ProfileState.gender)
+@form_router.callback_query(ProfileEdit.gender)
 async def answer_gender(query: CallbackQuery, state: FSMContext):
 
     state_data = await state.get_data()
@@ -227,12 +278,11 @@ async def answer_gender(query: CallbackQuery, state: FSMContext):
     profile_data.update(gender=query.data)
     await state.update_data(profile_data=profile_data)
 
-    await state.set_state(ProfileState.Finish)
-    builder = InlineKeyboardBuilder()
-    
-    builder.add(InlineKeyboardButton(text = "Сохранить", callback_data='save'))
+    await state.set_state(ProfileState.show_profile)
+    await show_profile(query.message, state)
 
-    profile = f"Ваш профиль:\n" +\
+def profile_str(profile_data: dict) -> str:
+    return f"Ваш профиль:\n" +\
         f"Имя: {profile_data['name']}\n" +\
         f"Имя команды: {', '.join(profile_data['team_name'])}\n" +\
         f"Email: {profile_data['email']}\n" +\
@@ -240,10 +290,144 @@ async def answer_gender(query: CallbackQuery, state: FSMContext):
         f"День рождения: {profile_data['date_of_birth_day']}/{profile_data['date_of_birth_month']}/{profile_data['date_of_birth_year']}\n" +\
         f"Пол: {'Ж' if profile_data['gender'] == '1' else 'М'}"
 
-    await query.message.edit_text(profile) # type: ignore
-    await query.message.edit_reply_markup( # type: ignore
-                        parse_mode=ParseMode.MARKDOWN,
-                        reply_markup=builder.as_markup()
-                        )
 
-    
+@form_router.callback_query(ProfileState.show_profile)
+async def correction_profile(query: CallbackQuery, state: FSMContext):
+    logger.info("profile correction started")
+    if query.data == "team_name":
+        await state.set_state(ProfileEdit.team_name)
+        await enter_test(query.message, state)
+
+    elif query.data == "name":
+        await state.set_state(ProfileEdit.name)
+        await query.message.edit_text("Введите имя:")
+
+    elif query.data == "email":
+        await state.set_state(ProfileEdit.email)
+        await query.message.edit_text("Ваш e-mail:")
+
+    elif query.data == "phone":
+        await state.set_state(ProfileEdit.phone)
+        await query.message.edit_text("Номер телефона:")
+
+    elif query.data == "birthday":
+        await state.set_state(ProfileEdit.date_of_birth_year)
+        await query.message.edit_text("Введите год вашего рождения:")
+
+    elif query.data == "gender":
+        await state.set_state(ProfileEdit.gender)
+        await query.message.edit_text("Выберите ваш пол:")
+
+        await query.message.edit_reply_markup(
+                text = "Выберите ваш пол:",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text='М', callback_data='0'),
+                        InlineKeyboardButton(text='Ж', callback_data='1')
+                    ]
+                ])
+            )
+
+    elif query.data == "back_to_menu":
+        await state.set_state(ConversationStates.LOTTERY_MENU)
+        await lottery_menu(query, state)
+
+async def lottery_request(message: Message, state: FSMContext) -> None:
+    state_data = await state.get_data()
+    profile_data = state_data.get('profile_data')
+    schedule = state_data.get('schedule')
+    city = state_data.get('city')
+    today_schedule = filter_today_games(schedule, city) # type: ignore
+
+    # logger.info(today_schedule)
+
+    builder = InlineKeyboardBuilder()
+
+    game_texts = "\n".join([f"{i+1}. {item.get('title')}, #{item.get('package_number')}, {item.get('place')}, {item.get('datetime')}"  
+                            for i, item in enumerate(today_schedule)])
+    builder.add(
+        *[
+            # InlineKeyboardButton(text=f"{i+1}", callback_data=f"enter_lottery_{i+1}") \
+            InlineKeyboardButton(text=f"{i+1}", callback_data=f"{i}") \
+                                for i in range(len(today_schedule))
+        ]
+    )
+
+    builder.adjust(len(today_schedule))
+    await message.edit_text(text = f"Выберите игру для лотереи:\n"+game_texts,
+                        reply_markup=builder.as_markup()) # type: ignore
+
+def lottery_menu_keyboard(profile_exists: bool) -> InlineKeyboardMarkup:
+    if  profile_exists:
+    # if  True:
+        keyboard = [
+            [
+                InlineKeyboardButton(text = "Посмотреть Профиль 🌝", callback_data="show_profile"),
+            ],
+            [
+                InlineKeyboardButton(text = "Участвовать 🚀", callback_data='lottery_join'),
+            ],
+            [
+                InlineKeyboardButton(text = "🔙 Назад", callback_data="back_to_menu"),
+            ]
+        ]
+    else:
+        keyboard = [
+            [
+                InlineKeyboardButton(text = "Создать Профиль ✏️", callback_data="profile"),
+                InlineKeyboardButton(text = "🔙 Назад", callback_data="back_to_menu"),
+            ]
+        ]
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+async def show_profile(message: Message, state: FSMContext):
+    # await ProfileState.team_name.set()
+    state_data = await state.get_data()
+    profile_data = state_data.get('profile_data', dict())
+
+    user_id = str(message.chat.id)
+    saved_profile = loto_profiles.get(user_id)
+
+    if saved_profile == profile_data:
+        logger.info("PROFILES EQs")
+    else:
+        logger.info("PROFILES not EQs")
+        change_profile_on_gdrive(user_id, profile_data)
+
+
+
+
+    profile = profile_str(profile_data)
+    profile = profile + "\n\nПодредактировать?"
+
+    keyboard = [
+        [
+        InlineKeyboardButton(text = "Команду", callback_data="team_name"),
+        # ],[
+        InlineKeyboardButton(text = "Номер Телефона", callback_data="phone"),
+        ],[
+        InlineKeyboardButton(text = "Имя", callback_data="name"),
+        # ],[
+        InlineKeyboardButton(text = "День Рождения", callback_data="birthday"),
+        ],[
+        InlineKeyboardButton(text = "email", callback_data="email"),
+        # ],[
+        InlineKeyboardButton(text = "Пол (🌚)", callback_data="gender"),        
+        ],[
+
+        InlineKeyboardButton(text = "🔙 Назад", callback_data="back_to_menu"),
+        ]
+    ]
+    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+    await message.edit_text(profile, reply_markup=markup)
+
+
+async def lottery_menu(query: CallbackQuery, state: FSMContext) -> None:
+    state_data = await state.get_data()
+    profile_data = state_data.get('profile_data')
+
+    markup = lottery_menu_keyboard(profile_data is not None)
+    await query.message.edit_text("Выберите:", reply_markup=markup) # type: ignore
+    # await query.message.edit_reply_markup(reply_markup=lottery_menu_keyboard(profile_data is not None)) # type: ignore,
