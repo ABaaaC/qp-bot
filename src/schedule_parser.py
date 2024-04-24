@@ -40,7 +40,7 @@ def extract_schedule(url):
             price_element = element.find('div', class_='new-price')
 
             info_element = element.find_all('div', class_='schedule-info')
-            time_element = info_element[1].find('div', class_='techtext')
+            time_element = info_element[-3].find('div', class_='techtext')
             address_element = info_element[0].find('div', class_='techtext-halfwhite')
 
             url_element = element.find('div', class_='game-buttons')
