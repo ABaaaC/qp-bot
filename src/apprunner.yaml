@@ -1,0 +1,10 @@
+version: 1.0
+runtime: python3
+build:
+  commands:
+    build:
+      - pip install -r requirements.txt
+run:
+  command: gunicorn qpbot10_guni_aio:app -b 0.0.0.0:8080 -k aiohttp.GunicornWebWorker
+  network:
+    port: 8080
