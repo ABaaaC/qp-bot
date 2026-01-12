@@ -114,5 +114,5 @@ else:
     from schedule_parser import extract_schedule, GameType # for testing
     schedule, timestamp = read_or_download_schedule("https://moscow.quizplease.ru/schedule", expiration_hours=24)
     for game in schedule:
-        print(game['title'])
+        print(game['time'])
     

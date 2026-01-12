@@ -81,6 +81,8 @@ async def filter_apply(state: FSMContext) -> None:
 async def load_schedule(state: FSMContext):
     expiration_hours = 24
     state_data = await state.get_data()
+    url = state_data.get('url') 
+    logger.info(f"url:{url}")
     now = datetime.utcnow().strftime('%Y%m%d%H%M%S')
     if 'schedule' not in state_data.keys() or state_data['schedule'] is None \
             or is_schedule_expired(state_data.get('schedule_timestamp'), state_data.get('city')): # type: ignore
@@ -177,6 +179,7 @@ def filter_today_games(schedule: List[dict], city: str) -> List[dict]:
         current_day = utc_dn.astimezone(tz).day
         current_month = utc_dn.astimezone(tz).month
 
+        logger.info(f"day:{day_str} \nmonth:{month_str} \nyear:{year_str} \ntime:{time_str}")
         date_dt = datetime.strptime(f"{day_str} {month_str} {year_str} {time_str}", "%d %B %Y %H:%M")
         if (date_dt.day == current_day and date_dt.month == current_month):
             game.update(datetime=date_dt.strftime("%d.%m %H:%M"))

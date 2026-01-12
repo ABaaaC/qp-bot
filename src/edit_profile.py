@@ -212,61 +212,103 @@ async def answer_date_of_birth_month(message: Message, state: FSMContext):
 
         if current_state == ProfileEdit.date_of_birth_month: 
             await state.set_state(ProfileEdit.date_of_birth_day)
+            current_state = await state.get_state()
         if current_state == ProfileState.date_of_birth_month: 
             await state.set_state(ProfileState.date_of_birth_day)
+            current_state = await state.get_state()
 
         await message.edit_text("День рождения:")
+
+
+        year = profile_data.get('date_of_birth_year') # type: ignore
+        month = profile_data.get('date_of_birth_month') # type: ignore
+        _, days_in_month = calendar.monthrange(int(year), int(month))
+
+        builder = InlineKeyboardBuilder()
+
+        builder.add(
+            *[
+                InlineKeyboardButton(text=f"{i}", callback_data=f"day_{i}") for i in range(1, days_in_month + 1)
+            ]
+        )
+
+        builder.adjust(5)
+
+
+        await message.edit_reply_markup(
+                text = "День рождения:",
+                reply_markup=builder.as_markup()
+            )
+        
+        if current_state == ProfileEdit.date_of_birth_day: 
+            # await state.set_state(ProfileState.show_profile)
+            # await show_profile(message, state)
+            pass
+        elif current_state == ProfileState.date_of_birth_day: 
+            await state.set_state(ProfileState.gender)
     else:
 
         message = await return_actual_message(message, state)
         await message.edit_text("Введите корректный номер месяца")
 
-@form_router.message(ProfileState.date_of_birth_day)
-@form_router.message(ProfileEdit.date_of_birth_day)
-async def answer_date_of_birth_day(message: Message, state: FSMContext):
+@form_router.callback_query(ProfileState.date_of_birth_day)
+@form_router.callback_query(ProfileEdit.date_of_birth_day)
+async def answer_date_of_birth_day(query: CallbackQuery, state: FSMContext):
+
     # await state.update_data(date_of_birth_day=message.text)
+    message = query.message
     current_state = await state.get_state()
 
     state_data = await state.get_data()
     profile_data = state_data.get('profile_data')
 
-    year = profile_data.get('date_of_birth_year') # type: ignore
-    month = profile_data.get('date_of_birth_month') # type: ignore
-    _, days_in_month = calendar.monthrange(int(year), int(month))
+    if query.data.split('_')[0] == 'day':
+        day = query.data.split('_')[1]
 
-
-    valid_flag = message.text.isdigit() and (1 <= int(message.text) <= days_in_month) # type: ignore
-
-    # valid_flag = True
-
-    if valid_flag:
-        profile_data.update(date_of_birth_day=message.text) # type: ignore
+        profile_data.update(date_of_birth_day=day) # type: ignore
         await state.update_data(profile_data=profile_data)
 
-        message = await return_actual_message(message, state)
-
-        if current_state == ProfileEdit.date_of_birth_day: 
-            await state.set_state(ProfileState.show_profile)
-            await show_profile(message, state)
-        elif current_state == ProfileState.date_of_birth_day: 
-            await state.set_state(ProfileState.gender)
-            await message.edit_text("Выберите ваш пол:")
-
-            await message.edit_reply_markup(
-                    text = "Выберите ваш пол:",
-                    reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                        [
-                            InlineKeyboardButton(text='М', callback_data='0'),
-                            InlineKeyboardButton(text='Ж', callback_data='1')
-                        ]
-                    ])
-                )
-
+        await state.set_state(ProfileState.show_profile)
+        await show_profile(query.message, state)
 
     else:
+        year = profile_data.get('date_of_birth_year') # type: ignore
+        month = profile_data.get('date_of_birth_month') # type: ignore
 
-        message = await return_actual_message(message, state)
-        await message.edit_text("Введите корректный номер дня")
+        _, days_in_month = calendar.monthrange(int(year), int(month))
+
+
+        valid_flag = message.text.isdigit() and (1 <= int(message.text) <= days_in_month) # type: ignore
+
+        valid_flag = True
+
+        if valid_flag:
+            # profile_data.update(date_of_birth_day=message.text) # type: ignore
+            profile_data.update(date_of_birth_day=query.data) # type: ignore
+            await state.update_data(profile_data=profile_data)
+
+            message = await return_actual_message(message, state)
+
+            if current_state == ProfileEdit.date_of_birth_day: 
+                await state.set_state(ProfileState.show_profile)
+                await show_profile(message, state)
+            elif current_state == ProfileState.date_of_birth_day: 
+                await state.set_state(ProfileState.gender)
+                await message.edit_reply_markup(
+                        text = "Выберите ваш пол:",
+                        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                            [
+                                InlineKeyboardButton(text='М', callback_data='0'),
+                                InlineKeyboardButton(text='Ж', callback_data='1')
+                            ]
+                        ])
+                    )
+
+
+        else:
+
+            message = await return_actual_message(message, state)
+            await message.edit_text("Введите корректный номер дня")
 
 # @form_router.message(ProfileState.gender)
 @form_router.callback_query(ProfileState.gender)
@@ -289,7 +331,6 @@ def profile_str(profile_data: dict) -> str:
         f"Телефон: {profile_data['phone']}\n" +\
         f"День рождения: {profile_data['date_of_birth_day']}/{profile_data['date_of_birth_month']}/{profile_data['date_of_birth_year']}\n" +\
         f"Пол: {'Ж' if profile_data['gender'] == '1' else 'М'}"
-
 
 @form_router.callback_query(ProfileState.show_profile)
 async def correction_profile(query: CallbackQuery, state: FSMContext):
@@ -337,6 +378,9 @@ async def lottery_request(message: Message, state: FSMContext) -> None:
     profile_data = state_data.get('profile_data')
     schedule = state_data.get('schedule')
     city = state_data.get('city')
+
+    # logger.info(schedule)
+
     today_schedule = filter_today_games(schedule, city) # type: ignore
 
     # logger.info(today_schedule)
@@ -422,7 +466,6 @@ async def show_profile(message: Message, state: FSMContext):
 
 
     await message.edit_text(profile, reply_markup=markup)
-
 
 async def lottery_menu(query: CallbackQuery, state: FSMContext) -> None:
     state_data = await state.get_data()

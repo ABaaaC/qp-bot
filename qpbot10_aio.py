@@ -44,7 +44,7 @@ async def on_startup(bot: Bot) -> None:
     # global loto_profiles
     loto_profiles.update(load_test())
 
-    logger.info(f"loto_profiles:\t{loto_profiles}")
+    # logger.info(f"loto_profiles:\t{loto_profiles}")
 
     await bot.set_webhook(f"{BASE_WEBHOOK_URL}{WEBHOOK_PATH}/{BOT_TOKEN}")
     
@@ -52,7 +52,7 @@ async def on_startup(bot: Bot) -> None:
 async def on_shutdown(bot: Bot) -> None:
     # Send a message to all users when the bot shuts down
     for user_id in user_ids:
-        await bot.send_message(user_id, "Бот был перезагружен для свежего обновления. Хорошего дня!🫡")
+        await bot.send_message(user_id, "В бота были добавлены свежие обновления. 💃💫 \n\n Чтобы продолжить, нажмите /start")
 
 
 async def hello(request):
