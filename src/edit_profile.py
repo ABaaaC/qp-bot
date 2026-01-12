@@ -375,7 +375,7 @@ async def correction_profile(query: CallbackQuery, state: FSMContext):
 
 async def lottery_request(message: Message, state: FSMContext) -> None:
     state_data = await state.get_data()
-    profile_data = state_data.get('profile_data')
+    # profile_data = state_data.get('profile_data')
     schedule = state_data.get('schedule')
     city = state_data.get('city')
 
@@ -384,6 +384,17 @@ async def lottery_request(message: Message, state: FSMContext) -> None:
     today_schedule = filter_today_games(schedule, city) # type: ignore
 
     # logger.info(today_schedule)
+
+    if not today_schedule:
+        builder = InlineKeyboardBuilder()
+        builder.add(InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_menu"))
+        await state.set_state(ConversationStates.LOTTERY_MENU)
+
+        await message.edit_text(
+            text="На сегодня игр для лотереи не найдено. Может появятся завтра...",
+            reply_markup=builder.as_markup()
+        )
+        return
 
     builder = InlineKeyboardBuilder()
 
@@ -470,6 +481,8 @@ async def show_profile(message: Message, state: FSMContext):
 async def lottery_menu(query: CallbackQuery, state: FSMContext) -> None:
     state_data = await state.get_data()
     profile_data = state_data.get('profile_data')
+    logger.info(f"profile_data in lottery_menu: {state_data.get('profile_data')}")
+
 
     markup = lottery_menu_keyboard(profile_data is not None)
     await query.message.edit_text("Выберите:", reply_markup=markup) # type: ignore
