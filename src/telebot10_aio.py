@@ -286,15 +286,16 @@ async def lottery_send_callback(query: types.CallbackQuery, state: FSMContext) -
                         )
 
     # lottery_id = '1' # for testing
-    if (int(lottery_id) <= 400) && (int(lottery_id) != -1):
-        with open("file_id_dict.json", "r") as outfile:
-        # with open("file_id_dict_test.json", "r") as outfile:
-            file_id_dict = json.load(outfile)
-        sent_message = await message.answer_photo(photo=file_id_dict[lottery_id])
-        await message.delete()
-        message = sent_message
-    else:
-        await message.edit_text(f"Успех! Ваш счастливый номер: {lottery_id}") # type: ignore
+    if int(lottery_id) != -1:
+        if (int(lottery_id) <= 400):
+            with open("file_id_dict.json", "r") as outfile:
+            # with open("file_id_dict_test.json", "r") as outfile:
+                file_id_dict = json.load(outfile)
+            sent_message = await message.answer_photo(photo=file_id_dict[lottery_id])
+            await message.delete()
+            message = sent_message
+        else:
+            await message.edit_text(f"Успех! Ваш счастливый номер: {lottery_id}") # type: ignore
     
     new_message = await query.message.answer(text=f"Ваш город всё ещё {get_city_name(city=city)}.\n" # type: ignore
                         "Вот ваше меню:", reply_markup=main_menu_keyboard(city)) # type: ignore
