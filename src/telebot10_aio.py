@@ -84,15 +84,16 @@ async def start(message: Message, state: FSMContext) -> None:
         await state.update_data(profile_data=profile_data)
     await state.set_state(ConversationStates.CITY_CHOICE)
     
+    should_update = False
     # Should we update file_id ?
-    should_update = True
-    try:
-        with open("file_id_metadata.json", "r") as f:
-            metadata = json.load(f)
-            last_update = datetime.fromisoformat(metadata["last_update"])
-            should_update = (datetime.now() - last_update).days >= 190
-    except:
-        pass
+    # should_update = True
+    # try:
+    #     with open("file_id_metadata.json", "r") as f:
+    #         metadata = json.load(f)
+    #         last_update = datetime.fromisoformat(metadata["last_update"])
+    #         should_update = (datetime.now() - last_update).days >= 190
+    # except:
+    #     pass
 
     if should_update:
         # generate file_id's
