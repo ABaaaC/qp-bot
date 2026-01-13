@@ -286,7 +286,7 @@ async def lottery_send_callback(query: types.CallbackQuery, state: FSMContext) -
                         )
 
     # lottery_id = '1' # for testing
-    if (int(lottery_id) <= 400) and (int(lottery_id) != -1):
+    if (int(lottery_id) <= 400) && (int(lottery_id) != -1):
         with open("file_id_dict.json", "r") as outfile:
         # with open("file_id_dict_test.json", "r") as outfile:
             file_id_dict = json.load(outfile)
