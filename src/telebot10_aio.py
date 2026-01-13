@@ -30,6 +30,7 @@ from src.edit_profile import (
 )
 
 import os, json
+from datetime import datetime
 
 from dotenv import dotenv_values
 config = dotenv_values(".env")
@@ -83,18 +84,34 @@ async def start(message: Message, state: FSMContext) -> None:
         await state.update_data(profile_data=profile_data)
     await state.set_state(ConversationStates.CITY_CHOICE)
     
+    # Should we update file_id ?
+    should_update = True
+    try:
+        with open("file_id_metadata.json", "r") as f:
+            metadata = json.load(f)
+            last_update = datetime.fromisoformat(metadata["last_update"])
+            should_update = (datetime.now() - last_update).days >= 190
+    except:
+        pass
 
-    # # generate file_id's
-    # file_id_dict = {}
-    # for i in range(1, 400):
-    #     screenshot_path = os.getcwd() + '/' + f"screenshots/lottery_number_{i}.png"
-    #     photo = FSInputFile(path=screenshot_path)
-    #     sent_message = await message.answer_photo(photo=photo)
-    #     file_id = sent_message.photo[-1].file_id
-    #     file_id_dict[i] = file_id
-    #     await sent_message.delete()
-    # with open("file_id_dict.json", "w") as outfile:
-    #     json.dump(file_id_dict, outfile, indent=4)
+    if should_update:
+        # generate file_id's
+        file_id_dict = {}
+        for i in range(1, 400):
+            screenshot_path = os.getcwd() + '/' + f"screenshots/lottery_number_{i}.png"
+            photo = FSInputFile(path=screenshot_path)
+            sent_message = await message.answer_photo(photo=photo)
+            file_id = sent_message.photo[-1].file_id
+            file_id_dict[i] = file_id
+            await sent_message.delete()
+            if i % 40 == 0:
+                logger.info(f"Generated {i} file_ids")
+        with open("file_id_dict.json", "w") as outfile:
+        # with open("file_id_dict_test.json", "w") as outfile:
+            json.dump(file_id_dict, outfile, indent=4)
+
+        with open("file_id_metadata.json", "w") as outfile:
+            json.dump({"last_update": datetime.now().isoformat()}, outfile)
 
     logger.info("Start is really calling")
     city = "moscow"
@@ -235,28 +252,29 @@ async def lottery_send_callback(query: types.CallbackQuery, state: FSMContext) -
     url = LOTTERY_URL
     message = query.message
 
+    logger.info(f"LOTTERY_URL: {url}")
+    logger.info(f"LOTTERY_DATA: {formdata}")
     # with open("file_id_dict.json", "r") as outfile:
     #     file_id_dict = json.load(outfile)
     # sent_message = await message.answer_photo(photo=file_id_dict["69"])
     # await message.delete()
     # message = sent_message
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Referer': 'https://quizplease.ru/',
+    }
 
-
+    lottery_id = -1
     async with ClientSession() as session:
     
-        async with session.post(url, data=formdata) as response:
+        async with session.post(url, data=formdata, headers=headers) as response:
+                logger.info(f"Response: {response}")
                 response_data = await response.json()
                 if response_data.get('success'):
-                    logger.info(f"Form submitted successfully! Message: {response_data.get('message')}")
                     lottery_id = response_data.get('message')
-                    if int(lottery_id) <= 400:
-                        with open("file_id_dict.json", "r") as outfile:
-                            file_id_dict = json.load(outfile)
-                        sent_message = await message.answer_photo(photo=file_id_dict[response_data.get('message')])
-                        await message.delete()
-                        message = sent_message
-                    else:
-                        await message.edit_text(f"Успех! Ваш счастливый номер: {response_data.get('message')}") # type: ignore
+                    logger.info(f"Form submitted successfully! Message: {lottery_id}")
                 else:
                     logger.error(f"Failed to submit the form. Message: {response_data.get('message')}")
                     response_message = response_data.get('message')
@@ -265,6 +283,17 @@ async def lottery_send_callback(query: types.CallbackQuery, state: FSMContext) -
                         text=f"{response_message.split('<br>')[0]}",
                         parse_mode=ParseMode.HTML
                         )
+
+    # lottery_id = '1' # for testing
+    if (int(lottery_id) <= 400) and (int(lottery_id) != -1):
+        with open("file_id_dict.json", "r") as outfile:
+        # with open("file_id_dict_test.json", "r") as outfile:
+            file_id_dict = json.load(outfile)
+        sent_message = await message.answer_photo(photo=file_id_dict[lottery_id])
+        await message.delete()
+        message = sent_message
+    else:
+        await message.edit_text(f"Успех! Ваш счастливый номер: {lottery_id}") # type: ignore
     
     new_message = await query.message.answer(text=f"Ваш город всё ещё {get_city_name(city=city)}.\n" # type: ignore
                         "Вот ваше меню:", reply_markup=main_menu_keyboard(city)) # type: ignore
