@@ -79,9 +79,7 @@ async def start(message: Message, state: FSMContext) -> None:
     # logger.info(f"loto_profiles:\t{loto_profiles}")
 
     await state.clear()
-    if user_id in loto_profiles:
-        profile_data=loto_profiles.get(user_id).copy()
-        await state.update_data(profile_data=profile_data)
+    # профиль грузим по городу в city_choice, здесь город ещё не выбран
     await state.set_state(ConversationStates.CITY_CHOICE)
     
     should_update = False
@@ -115,8 +113,10 @@ async def start(message: Message, state: FSMContext) -> None:
             json.dump({"last_update": datetime.now().isoformat()}, outfile)
 
     logger.info("Start is really calling")
-    city = "moscow"
-    custom_keyboard = [[InlineKeyboardButton(text=get_city_name(city), callback_data=city)]]
+    custom_keyboard = [
+        [InlineKeyboardButton(text=get_city_name("moscow"), callback_data="moscow")],
+        [InlineKeyboardButton(text=get_city_name("almaty"), callback_data="almaty")],
+    ]
     reply_markup = InlineKeyboardMarkup(inline_keyboard=custom_keyboard)
     # await message.answer(text="Please choose a city:", reply_markup=reply_markup)
     await message.answer(text="Пожалуйста, выберете город:", reply_markup=reply_markup)
@@ -139,6 +139,14 @@ async def city_choice(query: types.CallbackQuery, state: FSMContext) -> None:
     #                             'actual_message': query.message})
     city = query.data
     await state.update_data({'url': f'https://{city}.{QP_URL}'})
+    # профиль у каждого пользователя свой на каждый город
+    user_id = str(query.from_user.id)
+    profile_key = f"{user_id}:{city}"
+    profile_data = loto_profiles.get(profile_key)
+    if profile_data:
+        await state.update_data(profile_data=profile_data.copy())
+    else:
+        await state.update_data(profile_data=None)
     logger.info("Reading or Downloading Schedule")
 
     await main_menu_message(query, city)

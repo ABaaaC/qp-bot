@@ -436,18 +436,19 @@ def lottery_menu_keyboard(profile_exists: bool) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 async def show_profile(message: Message, state: FSMContext):
-    # await ProfileState.team_name.set()
     state_data = await state.get_data()
     profile_data = state_data.get('profile_data', dict())
+    city = state_data.get('city')
 
     user_id = str(message.chat.id)
-    saved_profile = loto_profiles.get(user_id)
+    profile_key = f"{user_id}:{city}"
+    saved_profile = loto_profiles.get(profile_key)
 
     if saved_profile == profile_data:
         logger.info("PROFILES EQs")
-    else:
+    elif city:
         logger.info("PROFILES not EQs")
-        change_profile_on_gdrive(user_id, profile_data)
+        change_profile_on_gdrive(user_id, city, profile_data)
 
 
 

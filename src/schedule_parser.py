@@ -47,7 +47,14 @@ def extract_schedule(url):
             price_element = element.find('div', class_='new-price')
 
             info_element = element.find_all('div', class_='schedule-info')
-            time_element = info_element[-3].find('div', class_='techtext')
+            # time_element = info_element[-3].find('div', class_='techtext')
+
+            for elem in info_element:
+                img_alm = elem.find('img')
+                if img_alm is None: continue
+                if "time-halfwhite.svg" not in img_alm['src']: continue
+                time_element = elem.find('div', class_='techtext')
+
             address_element = info_element[0].find('div', class_='techtext-halfwhite')
 
             url_element = element.find('div', class_='game-buttons')
@@ -66,7 +73,7 @@ def extract_schedule(url):
                 'description': description_element.get_text(strip=True) if description_element else None,
                 'place': place_element.contents[0].strip() if place_element else None,
                 'package_number': package_number,
-                'price': price_element.get_text(strip=True).split('₽')[0] + '₽' if price_element else None,
+                'price': price_element.get_text(strip=True).split('/')[0] if price_element else None,
                 'time': time_element.get_text(strip=True).split()[-1] if time_element else None,
                 'address': address_element.contents[0].strip() if address_element else None,
                 'url_suf': url_element.find_all('a')[-1]['href']
@@ -76,6 +83,7 @@ def extract_schedule(url):
                 game_info['title'] = "КиМ".join(game_info['title'].lower().split("кино и музыка"))
             schedule.append(game_info)
             if package_number is None:
+                print("PACKAGE NUMBER IS NONE")
                 print(game_info)
         
         return schedule

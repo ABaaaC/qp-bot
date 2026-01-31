@@ -8,7 +8,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 filename_prefix = 'schedule_data'
-base_filepath = 'schedules'
+# Корень проекта (родитель папки src). Один путь и для хука /cities, и для чтения при показе расписания.
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+base_filepath = os.path.join(_BASE_DIR, 'schedules')
 
 def is_file_expired(filepath: str, filename_prefix: str, expiration_hours: int):
     """Check if the file is expired based on filename."""

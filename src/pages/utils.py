@@ -160,7 +160,7 @@ async def update_schedule_message(message: Message, state: FSMContext, current_p
     logger.info("update_schedule_message DONE")
 
 def filter_today_games(schedule: List[dict], city: str) -> List[dict]:
-    tz = CITY_TO_TZ[city]
+    tz = timezone(CITY_TO_TZ[city])  # строка → объект часового пояса для astimezone()
     today_games = []
     for game in schedule:
         if  game.get('type') == GameType.online:
@@ -174,7 +174,6 @@ def filter_today_games(schedule: List[dict], city: str) -> List[dict]:
 
         dn = datetime.utcnow()
         utc_dn = pytz.utc.localize(dn)
-        tz = timezone('Europe/Moscow')
         year_str = utc_dn.astimezone(tz).year
         current_day = utc_dn.astimezone(tz).day
         current_month = utc_dn.astimezone(tz).month

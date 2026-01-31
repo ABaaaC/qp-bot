@@ -57,21 +57,22 @@ def load_test() -> dict:
     # print(downloaded_dict)
 
     plain_test_dict = {cipher_suite.decrypt(k.encode('utf-8')).decode(): {k1: cipher_suite.decrypt(v1.encode('utf-8')).decode() for k1, v1 in v.items()} for k, v in downloaded_dict.items()}
-    # print(plain_test_dict)
-    # print()
+    # Ключ: "user_id" (старый формат) → считаем город moscow; "user_id:city" → профиль на город
+    def _norm_key(k):
+        if ":" in k:
+            return k
+        return f"{k}:moscow"
 
-    plain_test_dict_prep = {k: {k1: v1 if k1 != 'team_name' else v1.split("*&%") for k1, v1 in v.items()} for k, v in plain_test_dict.items()}
-    # print(plain_test_dict_prep)
+    plain_test_dict_prep = {_norm_key(k): {k1: v1 if k1 != 'team_name' else v1.split("*&%") for k1, v1 in v.items()} for k, v in plain_test_dict.items()}
     return plain_test_dict_prep
 
 
-def change_profile_on_gdrive(user_id: str, profile: dict) -> None:
-
+def change_profile_on_gdrive(user_id: str, city: str, profile: dict) -> None:
+    """Сохраняет профиль на диск: ключ в файле — user_id:city (у каждого пользователя свой профиль на город)."""
     credentials = Credentials.from_service_account_info(gdrive_info, scopes=['https://www.googleapis.com/auth/drive'])
 
     drive_service = build('drive', 'v3', credentials=credentials)
     
-    # key = b'0Xba4xpw8hCqwXI5dqVnNC4N2DUyIXLkVtaEYcOX8so='
     key = gdrive_key.encode()
     cipher_suite = Fernet(key)
     file_id = gdrive_file_id
@@ -79,7 +80,8 @@ def change_profile_on_gdrive(user_id: str, profile: dict) -> None:
     add_dict_prep = {k1: v1 if not isinstance(v1, list) else "*&%".join(v1) for k1, v1 in profile.items()}
     cipher_add_dict = {k1: cipher_suite.encrypt(v1.encode()).decode('utf-8') for k1, v1 in add_dict_prep.items()}
 
-    cipher_user_id = cipher_suite.encrypt(user_id.encode()).decode('utf-8')
+    composite_key = f"{user_id}:{city}"
+    cipher_user_id = cipher_suite.encrypt(composite_key.encode()).decode('utf-8')
 
     print(f"FILE_ID:\t{file_id}")
     request = drive_service.files().get_media(fileId=file_id)
@@ -118,13 +120,10 @@ def change_profile_on_gdrive(user_id: str, profile: dict) -> None:
     request.execute()
 
     plain_test_dict = {cipher_suite.decrypt(k.encode('utf-8')).decode(): {k1: cipher_suite.decrypt(v1.encode('utf-8')).decode() for k1, v1 in v.items()} for k, v in existing_dict.items()}
-    # print(plain_test_dict)
-    # print()
-
-    plain_test_dict_prep = {k: {k1: v1 if k1 != 'team_name' else v1.split("*&%") for k1, v1 in v.items()} for k, v in plain_test_dict.items()}
-    # print(plain_test_dict_prep)
-    
-
+    # Ключи в файле: "user_id:city" или старый формат "user_id" → нормализуем для кэша
+    def _norm_key(k):
+        return k if ":" in k else f"{k}:moscow"
+    plain_test_dict_prep = {_norm_key(k): {k1: v1 if k1 != 'team_name' else v1.split("*&%") for k1, v1 in v.items()} for k, v in plain_test_dict.items()}
     loto_profiles.update(plain_test_dict_prep)
 
 

@@ -61,11 +61,13 @@ loto_profiles = {}
 DEFAULT_FILTER = dict([(i, True) for i in GameType])
 
 CITY_TO_RU_CITY = {
-    'moscow': 'Москва'
+    'moscow': 'Москва',
+    'almaty': 'Алматы'
 }
 
 CITY_TO_TZ = {
-    'moscow': 'Europe/Moscow'
+    'moscow': 'Europe/Moscow',
+    'almaty': 'Asia/Aqtobe'
 }
 
 month_translations = {
@@ -85,7 +87,8 @@ month_translations = {
 
 LOTTERY_CITY = {
     'moscow': '2b26c3d9fc',
-    'bishkek': '35830f620c'
+    'bishkek': '35830f620c',
+    'almaty': '',  # TODO: подставить ID лотереи для Алматы с сайта, если нужен
 }
 
 GAMETYPE_TO_RU = {
