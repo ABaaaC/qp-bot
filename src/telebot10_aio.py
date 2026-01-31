@@ -166,9 +166,9 @@ async def main_menu(query: types.CallbackQuery, state: FSMContext) -> None:
         await state.update_data({'page' : 0})
         await load_schedule(state)
         state_data = await state.get_data()
-        schedule = state_data.get('filtered_schedule')
-        num_pages = math.ceil(len(schedule) / num_items_per_page) # type: ignore
-        current_page = min(1, num_pages)  # Replace context.user_data with query.from_user
+        schedule = state_data.get('filtered_schedule') or []
+        num_pages = max(1, math.ceil(len(schedule) / num_items_per_page))
+        current_page = min(1, num_pages)
         # await state.update_data({'num_items_per_page': num_items_per_page})
         await update_schedule_message(query.message, state, current_page, num_pages)  # Pass query.from_user to update_schedule_message # type: ignore
 
@@ -330,9 +330,10 @@ async def button_callback(query: types.CallbackQuery, state: FSMContext):
             await update_schedule_message(query.message, state, current_page, num_pages)   # type: ignore
 
     elif query.data == "schedule":
-        current_page = 1  # Assuming you want to reset to the first page
-        num_pages = math.ceil(len(state_data.get('schedule')) / num_items_per_page)  # type: ignore # Replace context.user_data with query.from_user
-        await update_schedule_message(query.message, state, current_page, num_pages)   # type: ignore
+        current_page = 1
+        schedule = state_data.get('schedule') or []
+        num_pages = max(1, math.ceil(len(schedule) / num_items_per_page))
+        await update_schedule_message(query.message, state, current_page, num_pages)
 
     elif query.data == "something":
         await query.message.answer("You chose 'Something'.")  # type: ignore

@@ -87,11 +87,13 @@ async def load_schedule(state: FSMContext):
     if 'schedule' not in state_data.keys() or state_data['schedule'] is None \
             or is_schedule_expired(state_data.get('schedule_timestamp'), state_data.get('city')): # type: ignore
         schedule, timestamp = read_or_download_schedule(state_data.get('url') + "/schedule", expiration_hours=expiration_hours) # type: ignore
-        logger.info(schedule[0])
+        if schedule:
+            logger.info(schedule[0])
+        else:
+            logger.warning("Расписание пустое для url=%s", state_data.get('url'))
         logger.info("Done!")
 
         await state.update_data({'schedule': schedule, 'schedule_timestamp': timestamp})
-    
         await filter_apply(state)
     # if 'filtered_schedule' not in state_data.keys() or state_data['filtered_schedule'] is None:
     #     await state.update_data({'filtered_schedule': schedule})
@@ -121,12 +123,11 @@ async def update_schedule_message(message: Message, state: FSMContext, current_p
 
     state_data = await state.get_data()
     city = state_data.get('city')
-    schedule = state_data.get('filtered_schedule')
-    # num_items_per_page = state_data.get('num_items_per_page')
+    schedule = state_data.get('filtered_schedule') or []
     url = state_data.get('url')
 
     start_index = (current_page - 1) * num_items_per_page
-    end_index = min(start_index + num_items_per_page, len(schedule)) # type: ignore
+    end_index = min(start_index + num_items_per_page, len(schedule))
 
     schedule_text = get_schedule_text(schedule, start_index, end_index)
     builder = InlineKeyboardBuilder()
@@ -134,7 +135,7 @@ async def update_schedule_message(message: Message, state: FSMContext, current_p
     builder.add(
         *[
             InlineKeyboardButton(text=f"{i+1+start_index}", url=url+item.get('url_suf')) \
-                for i, item in enumerate(schedule[start_index:end_index]) # type: ignore
+                for i, item in enumerate(schedule[start_index:end_index])
         ]
     )
 
@@ -144,7 +145,7 @@ async def update_schedule_message(message: Message, state: FSMContext, current_p
     builder.add(InlineKeyboardButton(text = "⬅️", callback_data=text_callback))
 
     text_callback = f"next_{current_page + 1}_{num_pages}"
-    if start_index == len(schedule): # type: ignore
+    if start_index >= len(schedule):
         text_callback = 'pass'
     builder.add(InlineKeyboardButton(text = "➡️", callback_data=text_callback))
 

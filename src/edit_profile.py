@@ -292,17 +292,17 @@ async def answer_date_of_birth_day(query: CallbackQuery, state: FSMContext):
             if current_state == ProfileEdit.date_of_birth_day: 
                 await state.set_state(ProfileState.show_profile)
                 await show_profile(message, state)
-            elif current_state == ProfileState.date_of_birth_day: 
+            elif current_state == ProfileState.date_of_birth_day:
                 await state.set_state(ProfileState.gender)
-                await message.edit_reply_markup(
-                        text = "Выберите ваш пол:",
-                        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                            [
-                                InlineKeyboardButton(text='М', callback_data='0'),
-                                InlineKeyboardButton(text='Ж', callback_data='1')
-                            ]
-                        ])
-                    )
+                await message.edit_text(
+                    text="Выберите ваш пол:",
+                    reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                        [
+                            InlineKeyboardButton(text='М', callback_data='0'),
+                            InlineKeyboardButton(text='Ж', callback_data='1')
+                        ]
+                    ])
+                )
 
 
         else:
@@ -314,9 +314,12 @@ async def answer_date_of_birth_day(query: CallbackQuery, state: FSMContext):
 @form_router.callback_query(ProfileState.gender)
 @form_router.callback_query(ProfileEdit.gender)
 async def answer_gender(query: CallbackQuery, state: FSMContext):
-
+    # Принимаем только кнопки пола (М=0, Ж=1); иначе могла нажаться старая кнопка дня (day_12) и попасть в gender
+    if query.data not in ('0', '1'):
+        await query.answer()
+        return
     state_data = await state.get_data()
-    profile_data = state_data.get('profile_data', dict())
+    profile_data = state_data.get('profile_data', dict()).copy()
     profile_data.update(gender=query.data)
     await state.update_data(profile_data=profile_data)
 
@@ -324,13 +327,23 @@ async def answer_gender(query: CallbackQuery, state: FSMContext):
     await show_profile(query.message, state)
 
 def profile_str(profile_data: dict) -> str:
-    return f"Ваш профиль:\n" +\
-        f"Имя: {profile_data['name']}\n" +\
-        f"Имя команды: {', '.join(profile_data['team_name'])}\n" +\
-        f"Email: {profile_data['email']}\n" +\
-        f"Телефон: {profile_data['phone']}\n" +\
-        f"День рождения: {profile_data['date_of_birth_day']}/{profile_data['date_of_birth_month']}/{profile_data['date_of_birth_year']}\n" +\
-        f"Пол: {'Ж' if profile_data['gender'] == '1' else 'М'}"
+    """Форматирует профиль в строку; отсутствующие поля показываются как «—»."""
+    team = profile_data.get('team_name')
+    team_str = ', '.join(team) if isinstance(team, list) else (team or '—')
+    day = profile_data.get('date_of_birth_day', '—')
+    month = profile_data.get('date_of_birth_month', '—')
+    year = profile_data.get('date_of_birth_year', '—')
+    gender_val = profile_data.get('gender')
+    gender_str = 'Ж' if gender_val == '1' else ('М' if gender_val == '0' else '—')
+    return (
+        f"Ваш профиль:\n"
+        f"Имя: {profile_data.get('name', '—')}\n"
+        f"Имя команды: {team_str}\n"
+        f"Email: {profile_data.get('email', '—')}\n"
+        f"Телефон: {profile_data.get('phone', '—')}\n"
+        f"День рождения: {day}/{month}/{year}\n"
+        f"Пол: {gender_str}"
+    )
 
 @form_router.callback_query(ProfileState.show_profile)
 async def correction_profile(query: CallbackQuery, state: FSMContext):
@@ -437,7 +450,7 @@ def lottery_menu_keyboard(profile_exists: bool) -> InlineKeyboardMarkup:
 
 async def show_profile(message: Message, state: FSMContext):
     state_data = await state.get_data()
-    profile_data = state_data.get('profile_data', dict())
+    profile_data = state_data.get('profile_data') or {}
     city = state_data.get('city')
 
     user_id = str(message.chat.id)
@@ -446,7 +459,7 @@ async def show_profile(message: Message, state: FSMContext):
 
     if saved_profile == profile_data:
         logger.info("PROFILES EQs")
-    elif city:
+    elif city and profile_data:
         logger.info("PROFILES not EQs")
         change_profile_on_gdrive(user_id, city, profile_data)
 
